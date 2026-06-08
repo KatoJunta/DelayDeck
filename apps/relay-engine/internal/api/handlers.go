@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/state"
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/version"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/version"
 )
 
 type ErrorBody struct {

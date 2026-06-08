@@ -5,3 +5,9 @@ AGENTS.md
 # Go build artifacts
 apps/relay-engine/delaydeck-relay
 apps/relay-engine/delaydeck-relay.exe
+
+# OBS plugin build artifacts
+apps/obs-plugin/build/
+apps/obs-plugin/*.dll
+apps/obs-plugin/*.so
+apps/obs-plugin/*.dylib

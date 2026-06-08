@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/api"
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/config"
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/state"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/api"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/config"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/state"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
 )
 
 func newTestMachine() *state.Machine {

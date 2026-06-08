@@ -1,4 +1,4 @@
-module github.com/delaydeck/delaydeck/apps/relay-engine
+module github.com/KatoJunta/DelayDeck/apps/relay-engine
 
 go 1.22
 

@@ -11,8 +11,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/api"
-	"github.com/delaydeck/delaydeck/apps/relay-engine/internal/state"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/api"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
 )
 
 const testToken = "test-session-token"
