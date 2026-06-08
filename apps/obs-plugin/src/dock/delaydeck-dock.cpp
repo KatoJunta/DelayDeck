@@ -19,9 +19,36 @@ QLabel *makeValueLabel(QWidget *parent)
 
 } // namespace
 
-QString DelayDeckDock::engineStatusText(RelayLinkState state)
+QString DelayDeckDock::engineStatusText(RelayLinkState linkState,
+					RelayProcessState processState)
 {
-	switch (state) {
+	if (processState != RelayProcessState::Unmanaged) {
+		switch (processState) {
+		case RelayProcessState::Starting:
+			return tr("Engine.Starting");
+		case RelayProcessState::Stopping:
+			return tr("Engine.Stopping");
+		case RelayProcessState::FailedToStart:
+			return tr("Engine.ProcessFailed");
+		case RelayProcessState::Crashed:
+			return tr("Engine.ProcessCrashed");
+		case RelayProcessState::Running:
+			if (linkState == RelayLinkState::Connected) {
+				return tr("Engine.Connected");
+			}
+			if (linkState == RelayLinkState::Unhealthy) {
+				return tr("Engine.Unhealthy");
+			}
+			if (linkState == RelayLinkState::AuthFailed) {
+				return tr("Engine.AuthFailed");
+			}
+			return tr("Engine.Disconnected");
+		default:
+			break;
+		}
+	}
+
+	switch (linkState) {
 	case RelayLinkState::Disconnected:
 		return tr("Engine.Disconnected");
 	case RelayLinkState::Unhealthy:
@@ -49,11 +76,17 @@ QString DelayDeckDock::operationLabel(const QString &operation)
 
 DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 {
+	relay_process_ = new RelayProcess(this);
 	relay_client_ = new RelayClient(this);
 
 	auto *layout = new QVBoxLayout(this);
 
-	engine_status_label_ = new QLabel(engineStatusText(RelayLinkState::Disconnected), this);
+	engine_status_label_ = new QLabel(
+		engineStatusText(RelayLinkState::Disconnected,
+				 relay_process_->isManaged()
+					 ? RelayProcessState::Idle
+					 : RelayProcessState::Unmanaged),
+		this);
 	engine_status_label_->setWordWrap(true);
 	layout->addWidget(engine_status_label_);
 
@@ -67,16 +100,17 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		status_grid->addWidget(*value_out, row, 1);
 	};
 
-	addRow(0, tr("Label.Health"), &health_label_);
-	addRow(1, tr("Label.State"), &state_label_);
-	addRow(2, tr("Label.TargetDelay"), &target_delay_label_);
-	addRow(3, tr("Label.ActiveDelay"), &active_delay_label_);
-	addRow(4, tr("Label.Buffer"), &buffer_label_);
-	addRow(5, tr("Label.Input"), &input_label_);
-	addRow(6, tr("Label.Output"), &output_label_);
-	addRow(7, tr("Label.Slate"), &slate_label_);
-	addRow(8, tr("Label.Countdown"), &countdown_label_);
-	addRow(9, tr("Label.LastError"), &last_error_label_);
+	addRow(0, tr("Label.ProcessId"), &process_id_label_);
+	addRow(1, tr("Label.Health"), &health_label_);
+	addRow(2, tr("Label.State"), &state_label_);
+	addRow(3, tr("Label.TargetDelay"), &target_delay_label_);
+	addRow(4, tr("Label.ActiveDelay"), &active_delay_label_);
+	addRow(5, tr("Label.Buffer"), &buffer_label_);
+	addRow(6, tr("Label.Input"), &input_label_);
+	addRow(7, tr("Label.Output"), &output_label_);
+	addRow(8, tr("Label.Slate"), &slate_label_);
+	addRow(9, tr("Label.Countdown"), &countdown_label_);
+	addRow(10, tr("Label.LastError"), &last_error_label_);
 
 	layout->addLayout(status_grid);
 
@@ -93,10 +127,12 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	enable_delay_button_ = new QPushButton(tr("Button.EnableDelay"), this);
 	return_live_button_ = new QPushButton(tr("Button.ReturnLive"), this);
 	dump_buffer_button_ = new QPushButton(tr("Button.DumpBuffer"), this);
+	restart_relay_button_ = new QPushButton(tr("Button.RestartRelay"), this);
 
 	button_row->addWidget(enable_delay_button_);
 	button_row->addWidget(return_live_button_);
 	button_row->addWidget(dump_buffer_button_);
+	button_row->addWidget(restart_relay_button_);
 	layout->addLayout(button_row);
 
 	request_error_label_ = new QLabel(this);
@@ -106,6 +142,17 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	layout->addWidget(request_error_label_);
 
 	layout->addStretch();
+
+	connect(relay_process_, &RelayProcess::stateChanged, this,
+		&DelayDeckDock::applyProcessState);
+	connect(relay_process_, &RelayProcess::processDied, this, [this]() {
+		relay_client_->suspendTraffic();
+		updateProcessDisplay();
+	});
+	connect(relay_process_, &RelayProcess::credentialsReady, this,
+		[this](const QString &apiBaseUrl, const QString &sessionToken) {
+			relay_client_->setCredentials(apiBaseUrl, sessionToken);
+		});
 
 	connect(relay_client_, &RelayClient::linkStateChanged, this,
 		&DelayDeckDock::applyLinkState);
@@ -124,14 +171,30 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		&DelayDeckDock::onReturnLiveClicked);
 	connect(dump_buffer_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onDumpBufferClicked);
+	connect(restart_relay_button_, &QPushButton::clicked, this,
+		&DelayDeckDock::onRestartRelayClicked);
 
+	process_id_label_->setText(tr("Value.Dash"));
 	updateButtonStates();
-	relay_client_->start();
+
+	if (relay_process_->isManaged()) {
+		process_state_ = RelayProcessState::Idle;
+		relay_process_->startRelay();
+	} else {
+		process_state_ = RelayProcessState::Unmanaged;
+		startRelayClient();
+	}
+}
+
+void DelayDeckDock::shutdown()
+{
+	relay_client_->stop();
+	relay_process_->shutdown();
 }
 
 DelayDeckDock::~DelayDeckDock()
 {
-	relay_client_->stop();
+	shutdown();
 }
 
 void DelayDeckDock::applyHealth(const RelayHealth &health)
@@ -181,10 +244,43 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 	updateButtonStates();
 }
 
+void DelayDeckDock::applyProcessState(RelayProcessState state)
+{
+	process_state_ = state;
+	updateProcessDisplay();
+	updateButtonStates();
+
+	if (state == RelayProcessState::Running) {
+		startRelayClient();
+		return;
+	}
+
+	if (state == RelayProcessState::Starting) {
+		relay_client_->suspendTraffic();
+		return;
+	}
+
+	if (state == RelayProcessState::Crashed ||
+	    state == RelayProcessState::FailedToStart) {
+		relay_client_->suspendTraffic();
+		if (!relay_process_->lastError().isEmpty()) {
+			request_error_label_->setText(
+				tr("Error.RelayProcess").arg(
+					relay_process_->lastError()));
+			request_error_label_->show();
+		}
+	}
+
+	if (state == RelayProcessState::Stopping || state == RelayProcessState::Idle) {
+		relay_client_->suspendTraffic();
+	}
+}
+
 void DelayDeckDock::applyLinkState(RelayLinkState state)
 {
 	link_state_ = state;
-	engine_status_label_->setText(engineStatusText(state));
+	engine_status_label_->setText(
+		engineStatusText(link_state_, process_state_));
 
 	if (state != RelayLinkState::Connected &&
 	    state != RelayLinkState::Unhealthy) {
@@ -212,7 +308,7 @@ void DelayDeckDock::applyControlFailed(const QString &code,
 {
 	QString detail = message;
 	if (code == QStringLiteral("relay_unavailable")) {
-		detail = engineStatusText(link_state_);
+		detail = engineStatusText(link_state_, process_state_);
 	}
 
 	request_error_label_->setText(
@@ -233,13 +329,51 @@ void DelayDeckDock::applyRequestFailed(const QString &operation,
 	request_error_label_->show();
 }
 
+void DelayDeckDock::updateProcessDisplay()
+{
+	engine_status_label_->setText(
+		engineStatusText(link_state_, process_state_));
+
+	if (!relay_process_->isManaged()) {
+		process_id_label_->setText(tr("Value.Unmanaged"));
+		return;
+	}
+
+	const qint64 pid = relay_process_->processId();
+	if (pid > 0) {
+		process_id_label_->setText(QString::number(pid));
+	} else {
+		process_id_label_->setText(tr("Value.Dash"));
+	}
+}
+
+void DelayDeckDock::startRelayClient()
+{
+	if (relay_process_->isManaged()) {
+		if (process_state_ != RelayProcessState::Running) {
+			return;
+		}
+	}
+	relay_client_->resumeTraffic();
+}
+
 void DelayDeckDock::updateButtonStates()
 {
 	const bool connected = link_state_ == RelayLinkState::Connected;
-	enable_delay_button_->setEnabled(connected);
-	return_live_button_->setEnabled(connected);
-	dump_buffer_button_->setEnabled(connected);
-	target_delay_spin_->setEnabled(connected);
+	const bool processRunning =
+		!relay_process_->isManaged() ||
+		process_state_ == RelayProcessState::Running;
+	const bool processBusy =
+		relay_process_->isManaged() &&
+		(process_state_ == RelayProcessState::Starting ||
+		 process_state_ == RelayProcessState::Stopping);
+
+	enable_delay_button_->setEnabled(connected && processRunning);
+	return_live_button_->setEnabled(connected && processRunning);
+	dump_buffer_button_->setEnabled(connected && processRunning);
+	target_delay_spin_->setEnabled(connected && processRunning);
+	restart_relay_button_->setEnabled(relay_process_->isManaged() &&
+					  !processBusy);
 }
 
 void DelayDeckDock::onEnableDelayClicked()
@@ -261,4 +395,11 @@ void DelayDeckDock::onDumpBufferClicked()
 		return;
 	}
 	relay_client_->dumpBuffer();
+}
+
+void DelayDeckDock::onRestartRelayClicked()
+{
+	request_error_label_->hide();
+	relay_client_->suspendTraffic();
+	relay_process_->restartRelay();
 }

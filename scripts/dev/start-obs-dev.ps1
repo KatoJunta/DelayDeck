@@ -1,18 +1,27 @@
-# Launch OBS with DelayDeck Relay dev environment variables.
+# Launch OBS with DelayDeck managed Relay (Phase 4).
 #
 # Usage:
-#   .\scripts\dev\start-relay-mock.ps1        # terminal 1
-#   .\scripts\dev\start-obs-dev.ps1           # terminal 2
+#   .\scripts\dev\start-obs-dev.ps1
 #
-# The token must match start-relay-mock.ps1 (default: dev-phase3).
+# Do not run start-relay-mock.ps1 at the same time — both bind 127.0.0.1:9400
+# and the Dock may appear to reconnect to the wrong relay after a kill test.
+#
+# Optional external relay (Phase 3 style):
+#   .\scripts\dev\start-relay-mock.ps1        # terminal 1
+#   .\scripts\dev\start-obs-dev.ps1 -ManagedRelay:$false -SessionToken dev-phase3
 
 param(
+    [bool]$ManagedRelay = $true,
     [string]$SessionToken = "dev-phase3",
     [string]$RelayUrl = "http://127.0.0.1:9400",
+    [string]$RelayBin = "",
     [string]$ObsExe = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$relayDir = Join-Path $repoRoot "apps\relay-engine"
 
 if (-not $ObsExe) {
     $candidates = @(
@@ -34,13 +43,43 @@ obs64.exe not found. Pass -ObsExe explicitly, for example:
 "@
 }
 
-$env:DELAYDECK_SESSION_TOKEN = $SessionToken
-$env:DELAYDECK_RELAY_URL = $RelayUrl
+if ($ManagedRelay) {
+    if (-not $RelayBin) {
+        $RelayBin = Join-Path $relayDir "delaydeck-relay.exe"
+    }
+
+    if (-not (Test-Path $RelayBin)) {
+        Write-Host "Building delaydeck-relay: $RelayBin"
+        Push-Location $relayDir
+        try {
+            go build -o $RelayBin ./cmd/delaydeck-relay
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    $env:DELAYDECK_MANAGED_RELAY = "1"
+    $env:DELAYDECK_RELAY_BIN = (Resolve-Path $RelayBin).Path
+    $env:DELAYDECK_RELAY_URL = $RelayUrl
+    Remove-Item Env:DELAYDECK_SESSION_TOKEN -ErrorAction SilentlyContinue
+
+    Write-Host "DELAYDECK_MANAGED_RELAY = 1"
+    Write-Host "DELAYDECK_RELAY_BIN     = $($env:DELAYDECK_RELAY_BIN)"
+    Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
+} else {
+    $env:DELAYDECK_MANAGED_RELAY = "0"
+    $env:DELAYDECK_SESSION_TOKEN = $SessionToken
+    $env:DELAYDECK_RELAY_URL = $RelayUrl
+    Remove-Item Env:DELAYDECK_RELAY_BIN -ErrorAction SilentlyContinue
+
+    Write-Host "DELAYDECK_MANAGED_RELAY = 0"
+    Write-Host "DELAYDECK_SESSION_TOKEN = $SessionToken"
+    Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
+}
 
 $obsDir = Split-Path -Parent $ObsExe
 
-Write-Host "DELAYDECK_SESSION_TOKEN = $SessionToken"
-Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
 Write-Host "Starting OBS: $ObsExe"
 Write-Host "Working directory: $obsDir"
 

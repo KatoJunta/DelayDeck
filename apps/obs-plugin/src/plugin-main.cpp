@@ -42,6 +42,9 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	if (g_dock) {
+		// obs_frontend_remove_dock deletes the dock widget (via OBSDock).
+		// Do not delete g_dock here — that would double-free and crash OBS.
+		g_dock->shutdown();
 		obs_frontend_remove_dock(kDockId);
 		g_dock = nullptr;
 	}

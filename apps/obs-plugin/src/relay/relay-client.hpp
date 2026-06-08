@@ -27,6 +27,10 @@ public:
 
 	void start();
 	void stop();
+	void suspendTraffic();
+	void resumeTraffic();
+
+	void setCredentials(const QString &apiBaseUrl, const QString &sessionToken);
 
 	RelayLinkState linkState() const { return link_state_; }
 	QString apiBaseUrl() const { return api_base_url_; }
@@ -68,4 +72,6 @@ private:
 	QString session_token_;
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
 	bool running_ = false;
+	bool accepting_traffic_ = true;
+	bool credentials_locked_ = false;
 };

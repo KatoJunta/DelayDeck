@@ -45,6 +45,8 @@ RelayClient::RelayClient(QObject *parent) : QObject(parent)
 				     QStringLiteral("http://127.0.0.1:9400"));
 	session_token_ =
 		envOrDefault("DELAYDECK_SESSION_TOKEN", QString());
+	credentials_locked_ = false;
+	accepting_traffic_ = true;
 
 	poll_timer_.setInterval(kPollIntervalMs);
 	connect(&poll_timer_, &QTimer::timeout, this, &RelayClient::pollHealth);
@@ -58,7 +60,10 @@ RelayClient::RelayClient(QObject *parent) : QObject(parent)
 		ws_reconnect_timer_.stop();
 	});
 	connect(event_socket_, &RelayEventSocket::disconnected, this, [this]() {
-		if (running_ && link_state_ == RelayLinkState::Connected) {
+		if (!running_ || !accepting_traffic_) {
+			return;
+		}
+		if (link_state_ == RelayLinkState::Connected) {
 			scheduleWebSocketReconnect();
 		}
 	});
@@ -77,6 +82,7 @@ void RelayClient::start()
 		return;
 	}
 	running_ = true;
+	accepting_traffic_ = true;
 
 	if (session_token_.isEmpty()) {
 		setLinkState(RelayLinkState::NoToken);
@@ -91,9 +97,57 @@ void RelayClient::start()
 void RelayClient::stop()
 {
 	running_ = false;
+	accepting_traffic_ = false;
 	poll_timer_.stop();
 	ws_reconnect_timer_.stop();
 	disconnectEvents();
+}
+
+void RelayClient::suspendTraffic()
+{
+	accepting_traffic_ = false;
+	poll_timer_.stop();
+	ws_reconnect_timer_.stop();
+	disconnectEvents();
+	if (running_) {
+		setLinkState(RelayLinkState::Disconnected);
+	}
+}
+
+void RelayClient::resumeTraffic()
+{
+	if (!running_) {
+		start();
+		return;
+	}
+
+	accepting_traffic_ = true;
+	if (session_token_.isEmpty()) {
+		setLinkState(RelayLinkState::NoToken);
+		return;
+	}
+
+	setLinkState(RelayLinkState::Disconnected);
+	pollHealth();
+	poll_timer_.start();
+}
+
+void RelayClient::setCredentials(const QString &apiBaseUrl,
+				 const QString &sessionToken)
+{
+	credentials_locked_ = true;
+	api_base_url_ = apiBaseUrl;
+	session_token_ = sessionToken;
+
+	disconnectEvents();
+	if (running_) {
+		if (session_token_.isEmpty()) {
+			setLinkState(RelayLinkState::NoToken);
+		} else {
+			setLinkState(RelayLinkState::Disconnected);
+			pollHealth();
+		}
+	}
 }
 
 void RelayClient::enableDelay(int targetDelaySeconds)
@@ -117,7 +171,7 @@ void RelayClient::dumpBuffer()
 
 void RelayClient::pollHealth()
 {
-	if (!running_) {
+	if (!running_ || !accepting_traffic_) {
 		return;
 	}
 
@@ -184,7 +238,7 @@ void RelayClient::postControl(const QString &path, const QByteArray &body)
 
 void RelayClient::handleHealthReply(QNetworkReply *reply)
 {
-	if (!running_) {
+	if (!running_ || !accepting_traffic_) {
 		return;
 	}
 
@@ -219,7 +273,7 @@ void RelayClient::handleHealthReply(QNetworkReply *reply)
 
 void RelayClient::handleStatusReply(QNetworkReply *reply)
 {
-	if (!running_) {
+	if (!running_ || !accepting_traffic_) {
 		return;
 	}
 

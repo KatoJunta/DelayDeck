@@ -23,6 +23,8 @@ set(PLUGIN_SOURCES
     src/dock/delaydeck-dock.hpp
     src/relay/relay-client.cpp
     src/relay/relay-client.hpp
+    src/relay/relay-process.cpp
+    src/relay/relay-process.hpp
     src/relay/relay-event-socket.cpp
     src/relay/relay-event-socket.hpp
     src/relay/relay-types.hpp

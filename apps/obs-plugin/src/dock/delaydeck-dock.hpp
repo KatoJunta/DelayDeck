@@ -1,6 +1,7 @@
 #pragma once
 
 #include "relay/relay-client.hpp"
+#include "relay/relay-process.hpp"
 #include "relay/relay-types.hpp"
 
 #include <QLabel>
@@ -15,24 +16,33 @@ public:
 	explicit DelayDeckDock(QWidget *parent = nullptr);
 	~DelayDeckDock() override;
 
+	void shutdown();
+
 private:
-	static QString engineStatusText(RelayLinkState state);
+	static QString engineStatusText(RelayLinkState linkState,
+					RelayProcessState processState);
 	static QString operationLabel(const QString &operation);
 
 	void applyHealth(const RelayHealth &health);
 	void applyStatus(const RelayStatus &status);
 	void applyLinkState(RelayLinkState state);
+	void applyProcessState(RelayProcessState state);
 	void applyControlFailed(const QString &code, const QString &message);
 	void applyRequestFailed(const QString &operation, const QString &detail);
 	void updateButtonStates();
+	void updateProcessDisplay();
+	void startRelayClient();
 
 	void onEnableDelayClicked();
 	void onReturnLiveClicked();
 	void onDumpBufferClicked();
+	void onRestartRelayClicked();
 
+	RelayProcess *relay_process_;
 	RelayClient *relay_client_;
 
 	QLabel *engine_status_label_;
+	QLabel *process_id_label_;
 	QLabel *health_label_;
 	QLabel *state_label_;
 	QLabel *target_delay_label_;
@@ -49,7 +59,9 @@ private:
 	QPushButton *enable_delay_button_;
 	QPushButton *return_live_button_;
 	QPushButton *dump_buffer_button_;
+	QPushButton *restart_relay_button_;
 
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
+	RelayProcessState process_state_ = RelayProcessState::Idle;
 	QString relay_state_;
 };

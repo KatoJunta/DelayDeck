@@ -1,11 +1,11 @@
-# Start DelayDeck Relay in mock mode for OBS plugin development.
+# Start DelayDeck Relay in mock mode (external / unmanaged relay testing).
 #
 # Usage:
 #   .\scripts\dev\start-relay-mock.ps1
+#   .\scripts\dev\start-obs-dev.ps1 -ManagedRelay:$false -SessionToken dev-phase3
 #
-# Before launching OBS, set the same token in the environment:
-#   $env:DELAYDECK_SESSION_TOKEN = "dev-phase3"
-#   $env:DELAYDECK_RELAY_URL = "http://127.0.0.1:9400"
+# For normal development, OBS auto-starts Relay (Phase 4):
+#   .\scripts\dev\start-obs-dev.ps1
 
 param(
     [string]$ListenAddress = "127.0.0.1:9400",
