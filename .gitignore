@@ -1,3 +1,7 @@
 .cursor/
 .cursorrules
 AGENTS.md
+
+# Go build artifacts
+apps/relay-engine/delaydeck-relay
+apps/relay-engine/delaydeck-relay.exe
