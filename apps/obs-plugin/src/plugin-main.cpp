@@ -7,7 +7,7 @@
 #include "version.hpp"
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("delaydeck", "en-US")
+OBS_MODULE_USE_DEFAULT_LOCALE("delaydeck", "ja-JP")
 
 namespace {
 

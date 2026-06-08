@@ -24,6 +24,8 @@ type StatusSnapshot struct {
 	InputState         ConnectionState `json:"input_state"`
 	OutputState        ConnectionState `json:"output_state"`
 	TransitionPending  bool            `json:"transition_pending"`
+	SlateMessage       string          `json:"slate_message"`
+	CountdownSeconds   int             `json:"countdown_seconds"`
 	LastError          string          `json:"last_error"`
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
@@ -50,6 +52,8 @@ type Machine struct {
 	inputConnected      bool
 	outputConnected     bool
 	transitionPending   bool
+	slateMessage        string
+	countdownSeconds    int
 	lastError           string
 	updatedAt           time.Time
 
@@ -283,13 +287,14 @@ func canTransition(from, to State, trigger string) bool {
 
 func (m *Machine) runEnableDelaySequence(targetSeconds int) {
 	defer m.clearTransitionPending()
+	defer m.clearOperatorDisplay()
 
 	m.waitTransitionDelay()
 	if err := m.apply(SafeHold, "buffering_show_safe_slate"); err != nil {
 		return
 	}
 
-	m.mockFillBuffer(targetSeconds)
+	m.mockCountdownFill(targetSeconds)
 
 	m.waitTransitionDelay()
 	_ = m.apply(Delayed, "buffer_filled")
@@ -297,20 +302,24 @@ func (m *Machine) runEnableDelaySequence(targetSeconds int) {
 
 func (m *Machine) runReturnLiveSequence() {
 	defer m.clearTransitionPending()
+	defer m.clearOperatorDisplay()
+
+	drainSeconds := m.snapshotActiveDelaySeconds()
+	m.mockDrainAt1x(drainSeconds)
 
 	m.waitTransitionDelay()
 	if err := m.apply(SafeHold, "returning_show_safe_slate"); err != nil {
 		return
 	}
 
-	m.discardBuffer()
+	m.mockShowReturnLiveSlate()
 
-	m.waitTransitionDelay()
 	_ = m.apply(Realtime, "return_live_complete")
 }
 
 func (m *Machine) runDumpBufferSequence() {
 	defer m.clearTransitionPending()
+	defer m.clearOperatorDisplay()
 
 	m.discardBuffer()
 
@@ -401,6 +410,8 @@ func (m *Machine) buildSnapshot() StatusSnapshot {
 		InputState:          inputState,
 		OutputState:         outputState,
 		TransitionPending:   m.transitionPending,
+		SlateMessage:        m.slateMessage,
+		CountdownSeconds:    m.countdownSeconds,
 		LastError:           m.lastError,
 		UpdatedAt:           m.updatedAt,
 	}

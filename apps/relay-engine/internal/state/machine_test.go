@@ -111,7 +111,45 @@ func TestReturnLiveSequence(t *testing.T) {
 		t.Fatalf("ReturnLive: %v", err)
 	}
 
-	waitForState(t, m, state.Realtime, 2*time.Second)
+	waitForState(t, m, state.Realtime, 5*time.Second)
+
+	snapshot := m.Snapshot()
+	if snapshot.BufferUsagePercent != 0 {
+		t.Fatalf("expected empty buffer after return-live drain, got %.2f%%",
+			snapshot.BufferUsagePercent)
+	}
+	if snapshot.ActiveDelaySeconds != 0 {
+		t.Fatalf("expected active delay 0 after return-live, got %d",
+			snapshot.ActiveDelaySeconds)
+	}
+}
+
+func TestEnableDelaySetsSlateDuringTransition(t *testing.T) {
+	m := state.NewMachine(512*1024*1024, 20*time.Millisecond)
+	bootToRealtime(t, m)
+
+	if err := m.EnableDelay(30); err != nil {
+		t.Fatalf("EnableDelay: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	sawSlate := false
+	for time.Now().Before(deadline) {
+		snapshot := m.Snapshot()
+		if snapshot.SlateMessage != "" && snapshot.CountdownSeconds > 0 {
+			sawSlate = true
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !sawSlate {
+		t.Fatal("expected slate_message and countdown during enable-delay")
+	}
+
+	waitForState(t, m, state.Delayed, 5*time.Second)
+	if m.Snapshot().SlateMessage != "" {
+		t.Fatalf("expected slate cleared after DELAYED, got %q", m.Snapshot().SlateMessage)
+	}
 }
 
 func TestDumpBufferSequence(t *testing.T) {

@@ -1,5 +1,6 @@
 .cursor/
 .cursorrules
+docs/
 AGENTS.md
 
 # Go build artifacts

@@ -15,12 +15,17 @@ endif()
 
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 set(PLUGIN_SOURCES
     src/plugin-main.cpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
+    src/relay/relay-client.cpp
+    src/relay/relay-client.hpp
+    src/relay/relay-event-socket.cpp
+    src/relay/relay-event-socket.hpp
+    src/relay/relay-types.hpp
 )
 
 add_library(delaydeck MODULE ${PLUGIN_SOURCES})
@@ -32,6 +37,7 @@ target_link_libraries(delaydeck PRIVATE
     OBS::obs-frontend-api
     Qt6::Core
     Qt6::Widgets
+    Qt6::Network
 )
 
 set_target_properties(delaydeck PROPERTIES
