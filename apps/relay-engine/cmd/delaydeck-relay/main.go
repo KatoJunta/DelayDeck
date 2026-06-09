@@ -55,7 +55,10 @@ func run(args []string) int {
 			return 1
 		}
 
-		rtmpServer, err := ingest.StartRTMPServer(cfg.IngestListenAddress, dest, machine)
+		rtmpServer, err := ingest.StartRTMPServer(cfg.IngestListenAddress, dest, machine, ingest.ForwardingOptions{
+			FixedDelaySeconds:   cfg.FixedDelaySeconds,
+			BufferCapacityBytes: cfg.BufferCapacityBytes,
+		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest server: %v\n", err)
 			return 1
@@ -84,8 +87,8 @@ func run(args []string) int {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("delaydeck-relay listening on %s (mode=%s, ingest %s)",
-			cfg.ListenAddress, cfg.Mode, ingestAddress)
+		log.Printf("delaydeck-relay listening on %s (mode=%s, ingest %s, fixed_delay=%ds)",
+			cfg.ListenAddress, cfg.Mode, ingestAddress, cfg.FixedDelaySeconds)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}

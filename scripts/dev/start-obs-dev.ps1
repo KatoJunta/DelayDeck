@@ -75,6 +75,9 @@ if ($ManagedRelay) {
             Write-Host "DELAYDECK_RELAY_MODE        = forwarding"
             Write-Host "DELAYDECK_OUTPUT_URL        = $($env:DELAYDECK_OUTPUT_URL)"
             Write-Host "DELAYDECK_OUTPUT_STREAM_KEY = (set)"
+            if ($env:DELAYDECK_FIXED_DELAY_SECONDS) {
+                Write-Host "DELAYDECK_FIXED_DELAY_SECONDS = $($env:DELAYDECK_FIXED_DELAY_SECONDS)"
+            }
         }
     } else {
         $env:DELAYDECK_RELAY_MODE = "mock"

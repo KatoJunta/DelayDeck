@@ -288,6 +288,26 @@ func TestDisconnectSessionFromRealtime(t *testing.T) {
 	}
 }
 
+func TestUpdateBufferMetrics(t *testing.T) {
+	m := newTestMachine()
+	m.SetFixedDelayTarget(30)
+	m.UpdateBufferMetrics(128*1024*1024, 25.0, 12)
+
+	snap := m.Snapshot()
+	if snap.TargetDelaySeconds != 30 {
+		t.Fatalf("target delay = %d", snap.TargetDelaySeconds)
+	}
+	if snap.ActiveDelaySeconds != 12 {
+		t.Fatalf("active delay = %d", snap.ActiveDelaySeconds)
+	}
+	if snap.BufferUsedBytes != 128*1024*1024 {
+		t.Fatalf("buffer used = %d", snap.BufferUsedBytes)
+	}
+	if snap.BufferUsagePercent != 25.0 {
+		t.Fatalf("buffer usage = %f", snap.BufferUsagePercent)
+	}
+}
+
 func TestReconnectAfterDisconnectSession(t *testing.T) {
 	m := newTestMachine()
 	bootToRealtime(t, m)

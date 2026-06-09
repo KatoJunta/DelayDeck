@@ -17,6 +17,7 @@ type Config struct {
 	MockAutoConnect     bool
 	TransitionDelay     time.Duration
 	BufferCapacityBytes int64
+	FixedDelaySeconds   int
 }
 
 func ParseFlags(args []string) (*Config, error) {
@@ -30,7 +31,8 @@ func ParseFlags(args []string) (*Config, error) {
 	outputStreamKey := fs.String("output-stream-key", "", "output stream key (forwarding mode)")
 	mockAutoConnect := fs.Bool("mock-auto-connect", true, "auto-advance READY to REALTIME in mock mode")
 	transitionMS := fs.Int("transition-ms", 50, "mock transition delay in milliseconds")
-	bufferCapacity := fs.Int64("buffer-capacity-bytes", 512*1024*1024, "mock buffer capacity in bytes")
+	bufferCapacity := fs.Int64("buffer-capacity-bytes", 512*1024*1024, "buffer capacity in bytes")
+	fixedDelay := fs.Int("fixed-delay-seconds", 0, "fixed output delay in seconds (0 = realtime passthrough)")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err
@@ -53,6 +55,18 @@ func ParseFlags(args []string) (*Config, error) {
 	}
 	if *bufferCapacity <= 0 {
 		return nil, fmt.Errorf("buffer-capacity-bytes must be > 0")
+	}
+	if *fixedDelay < 0 {
+		return nil, fmt.Errorf("fixed-delay-seconds must be >= 0")
+	}
+
+	resolvedFixedDelay := *fixedDelay
+	if envDelay := os.Getenv("DELAYDECK_FIXED_DELAY_SECONDS"); envDelay != "" {
+		parsed, err := parsePositiveInt(envDelay)
+		if err != nil {
+			return nil, fmt.Errorf("DELAYDECK_FIXED_DELAY_SECONDS: %w", err)
+		}
+		resolvedFixedDelay = parsed
 	}
 
 	runMode := RunMode(*mode)
@@ -90,5 +104,18 @@ func ParseFlags(args []string) (*Config, error) {
 		MockAutoConnect:     autoConnect,
 		TransitionDelay:     time.Duration(*transitionMS) * time.Millisecond,
 		BufferCapacityBytes: *bufferCapacity,
+		FixedDelaySeconds:   resolvedFixedDelay,
 	}, nil
+}
+
+func parsePositiveInt(raw string) (int, error) {
+	var value int
+	_, err := fmt.Sscanf(raw, "%d", &value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid integer %q", raw)
+	}
+	if value < 0 {
+		return 0, fmt.Errorf("must be >= 0")
+	}
+	return value, nil
 }

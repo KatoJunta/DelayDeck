@@ -140,6 +140,13 @@ void RelayProcess::startRelay()
 		}
 		args << QStringLiteral("--output-url") << output_url
 		     << QStringLiteral("--output-stream-key") << output_stream_key;
+
+		const QString fixed_delay =
+			envOrDefault("DELAYDECK_FIXED_DELAY_SECONDS", QString());
+		if (!fixed_delay.isEmpty()) {
+			args << QStringLiteral("--fixed-delay-seconds")
+			     << fixed_delay;
+		}
 	} else {
 		args << QStringLiteral("--mock-auto-connect");
 	}

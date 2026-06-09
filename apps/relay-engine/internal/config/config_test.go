@@ -36,6 +36,23 @@ func TestParseFlagsForwardingLoadsOutputFromArgs(t *testing.T) {
 	}
 }
 
+func TestParseFlagsForwardingLoadsFixedDelayFromEnv(t *testing.T) {
+	t.Setenv("DELAYDECK_FIXED_DELAY_SECONDS", "30")
+
+	cfg, err := ParseFlags([]string{
+		"--mode", "forwarding",
+		"--token", "test-token",
+		"--output-url", "rtmp://127.0.0.1/live",
+		"--output-stream-key", "test-key",
+	})
+	if err != nil {
+		t.Fatalf("parse flags: %v", err)
+	}
+	if cfg.FixedDelaySeconds != 30 {
+		t.Fatalf("fixed delay = %d", cfg.FixedDelaySeconds)
+	}
+}
+
 func TestParseFlagsMockModeKeepsAutoConnect(t *testing.T) {
 	cfg, err := ParseFlags([]string{"--token", "test-token"})
 	if err != nil {

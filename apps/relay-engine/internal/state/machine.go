@@ -124,6 +124,23 @@ func (m *Machine) MockConnectOutput() error {
 	return m.ConnectOutput()
 }
 
+func (m *Machine) SetFixedDelayTarget(seconds int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.targetDelaySeconds = seconds
+	m.updatedAt = time.Now().UTC()
+}
+
+func (m *Machine) UpdateBufferMetrics(usedBytes int64, usagePercent float64, activeDelaySeconds int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.bufferUsedBytes = usedBytes
+	m.bufferUsagePercent = usagePercent
+	m.activeDelaySeconds = activeDelaySeconds
+	m.updatedAt = time.Now().UTC()
+}
+
 func (m *Machine) MarkError(message string) error {
 	m.mu.Lock()
 	m.lastError = message
