@@ -1,7 +1,6 @@
 module github.com/KatoJunta/DelayDeck/apps/relay-engine
 
-go 1.22
-
+go 1.24.3
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/yutopp/go-flv v0.3.1

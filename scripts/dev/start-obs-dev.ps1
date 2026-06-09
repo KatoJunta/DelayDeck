@@ -48,7 +48,7 @@ if ($ManagedRelay) {
     }
 
     Write-Host "Building delaydeck-relay: $RelayBin"
-    & (Join-Path $repoRoot "scripts\dev\sync-version.ps1")
+    & (Join-Path $repoRoot "scripts\dev\sync-repo.ps1")
     Push-Location $relayDir
     try {
         go build -o $RelayBin ./cmd/delaydeck-relay
