@@ -5,12 +5,14 @@ import (
 	"sync"
 	"time"
 
+	flvtag "github.com/yutopp/go-flv/tag"
+
 	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/media"
 )
 
 var (
 	ErrBufferOverflow = errors.New("buffer capacity exceeded")
-	ErrFrameTooLarge    = errors.New("frame exceeds buffer capacity")
+	ErrFrameTooLarge  = errors.New("frame exceeds buffer capacity")
 )
 
 // Ring is a bounded FIFO queue measured in bytes.
@@ -99,6 +101,49 @@ func (r *Ring) Clear() {
 	r.usedBytes = 0
 }
 
+func (r *Ring) DropUntilVideoKeyframe() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	dropped := 0
+	for len(r.entries) > 0 {
+		frame := r.entries[0]
+		if isVideoKeyframe(frame) {
+			break
+		}
+		r.entries = r.entries[1:]
+		r.usedBytes -= frame.ByteSize()
+		dropped++
+	}
+	if r.usedBytes < 0 {
+		r.usedBytes = 0
+	}
+	return dropped
+}
+
+func (r *Ring) ActiveKeyframeDelaySeconds(now time.Time, targetSeconds int) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if targetSeconds <= 0 {
+		return 0
+	}
+
+	for _, frame := range r.entries {
+		if !isVideoKeyframe(frame) {
+			continue
+		}
+		elapsed := int(now.Sub(frame.EnqueuedAt).Seconds())
+		if elapsed < 0 {
+			return 0
+		}
+		if elapsed > targetSeconds {
+			return targetSeconds
+		}
+		return elapsed
+	}
+	return 0
+}
+
 func (r *Ring) ActiveDelaySeconds(now time.Time, targetSeconds int) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -114,6 +159,16 @@ func (r *Ring) ActiveDelaySeconds(now time.Time, targetSeconds int) int {
 		return targetSeconds
 	}
 	return elapsed
+}
+
+func isVideoKeyframe(frame media.Frame) bool {
+	if frame.Kind != media.KindVideo {
+		return false
+	}
+	if len(frame.VideoPayload) > 0 {
+		return media.IsVideoKeyframePayload(frame.VideoPayload)
+	}
+	return frame.Video != nil && frame.Video.FrameType == flvtag.FrameTypeKeyFrame
 }
 
 func (r *Ring) UsagePercent() float64 {

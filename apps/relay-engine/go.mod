@@ -2,7 +2,11 @@ module github.com/KatoJunta/DelayDeck/apps/relay-engine
 
 go 1.22
 
-require github.com/gorilla/websocket v1.5.3
+require (
+	github.com/gorilla/websocket v1.5.3
+	github.com/yutopp/go-flv v0.3.1
+	github.com/yutopp/go-rtmp v0.0.7
+)
 
 require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -11,7 +15,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/yutopp/go-amf0 v0.1.0 // indirect
-	github.com/yutopp/go-flv v0.3.1 // indirect
-	github.com/yutopp/go-rtmp v0.0.7 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 )

@@ -1,10 +1,14 @@
 #pragma once
 
 #include "preflight/preflight-result.hpp"
+#include "obs/slate-scene-controller.hpp"
 #include "relay/relay-client.hpp"
 #include "relay/relay-process.hpp"
 #include "relay/relay-types.hpp"
 
+#include <obs-frontend-api.h>
+
+#include <QComboBox>
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
@@ -18,6 +22,7 @@ public:
 	~DelayDeckDock() override;
 
 	void shutdown();
+	void handleFrontendEvent(enum obs_frontend_event event);
 
 	PreflightResult runPreflight();
 	void setLastPreflightResult(const PreflightResult &result);
@@ -41,11 +46,14 @@ private:
 	void updateProcessDisplay();
 	void startRelayClient();
 	void updatePreflightDisplay(const PreflightResult &result);
+	void refreshSceneSelectors();
 
 	void onEnableDelayClicked();
 	void onReturnLiveClicked();
 	void onDumpBufferClicked();
 	void onRestartRelayClicked();
+	void onEnableSlateSceneChanged();
+	void onReturnSlateSceneChanged();
 
 	RelayProcess *relay_process_;
 	RelayClient *relay_client_;
@@ -66,11 +74,14 @@ private:
 	QLabel *preflight_label_;
 
 	QSpinBox *target_delay_spin_;
+	QComboBox *enable_slate_scene_combo_;
+	QComboBox *return_slate_scene_combo_;
 	QPushButton *enable_delay_button_;
 	QPushButton *return_live_button_;
 	QPushButton *dump_buffer_button_;
 	QPushButton *restart_relay_button_;
 
+	SlateSceneController slate_scene_controller_;
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
 	RelayProcessState process_state_ = RelayProcessState::Idle;
 	QString relay_state_;

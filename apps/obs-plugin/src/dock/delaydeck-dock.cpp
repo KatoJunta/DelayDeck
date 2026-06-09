@@ -9,6 +9,8 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <QSignalBlocker>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -18,6 +20,21 @@ QLabel *makeValueLabel(QWidget *parent)
 	auto *label = new QLabel(delaydeck::tr("Value.Dash"), parent);
 	label->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	return label;
+}
+
+void populateSceneCombo(QComboBox *combo, const QStringList &sceneNames)
+{
+	const QString previous = combo->currentData().toString();
+	const QSignalBlocker blocker(combo);
+
+	combo->clear();
+	combo->addItem(delaydeck::tr("SlateScene.None"), QString());
+	for (const QString &name : sceneNames) {
+		combo->addItem(name, name);
+	}
+
+	const int index = combo->findData(previous);
+	combo->setCurrentIndex(index >= 0 ? index : 0);
 }
 
 } // namespace
@@ -126,6 +143,19 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	delay_row->addStretch();
 	layout->addLayout(delay_row);
 
+	auto *scene_grid = new QGridLayout();
+	scene_grid->setColumnStretch(1, 1);
+
+	enable_slate_scene_combo_ = new QComboBox(this);
+	return_slate_scene_combo_ = new QComboBox(this);
+	scene_grid->addWidget(new QLabel(delaydeck::tr("Label.EnableSlateScene"), this), 0,
+			      0);
+	scene_grid->addWidget(enable_slate_scene_combo_, 0, 1);
+	scene_grid->addWidget(new QLabel(delaydeck::tr("Label.ReturnSlateScene"), this), 1,
+			      0);
+	scene_grid->addWidget(return_slate_scene_combo_, 1, 1);
+	layout->addLayout(scene_grid);
+
 	auto *button_row = new QHBoxLayout();
 	enable_delay_button_ = new QPushButton(delaydeck::tr("Button.EnableDelay"), this);
 	return_live_button_ = new QPushButton(delaydeck::tr("Button.ReturnLive"), this);
@@ -180,8 +210,13 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		&DelayDeckDock::onDumpBufferClicked);
 	connect(restart_relay_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onRestartRelayClicked);
+	connect(enable_slate_scene_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, [this](int) { onEnableSlateSceneChanged(); });
+	connect(return_slate_scene_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, [this](int) { onReturnSlateSceneChanged(); });
 
 	process_id_label_->setText(delaydeck::tr("Value.Dash"));
+	refreshSceneSelectors();
 	updateButtonStates();
 
 	if (relay_process_->isManaged()) {
@@ -195,9 +230,21 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	StreamingGuard::install(this);
 }
 
+void DelayDeckDock::handleFrontendEvent(enum obs_frontend_event event)
+{
+	if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
+	    event != OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED &&
+	    event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
+		return;
+	}
+
+	QTimer::singleShot(0, this, [this]() { refreshSceneSelectors(); });
+}
+
 void DelayDeckDock::shutdown()
 {
 	StreamingGuard::uninstall();
+	slate_scene_controller_.clear();
 	relay_client_->stop();
 	relay_process_->shutdown();
 }
@@ -278,6 +325,7 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 	}
 
 	request_error_label_->hide();
+	slate_scene_controller_.applyStatus(status);
 	updateButtonStates();
 }
 
@@ -334,6 +382,7 @@ void DelayDeckDock::applyLinkState(RelayLinkState state)
 		slate_label_->setText(delaydeck::tr("Value.Dash"));
 		countdown_label_->setText(delaydeck::tr("Value.Dash"));
 		last_error_label_->setText(delaydeck::tr("Value.Dash"));
+		slate_scene_controller_.clear();
 		relay_state_.clear();
 	}
 
@@ -382,6 +431,15 @@ void DelayDeckDock::updateProcessDisplay()
 	} else {
 		process_id_label_->setText(delaydeck::tr("Value.Dash"));
 	}
+}
+
+void DelayDeckDock::refreshSceneSelectors()
+{
+	const QStringList sceneNames = SlateSceneController::sceneNames();
+	populateSceneCombo(enable_slate_scene_combo_, sceneNames);
+	populateSceneCombo(return_slate_scene_combo_, sceneNames);
+	onEnableSlateSceneChanged();
+	onReturnSlateSceneChanged();
 }
 
 void DelayDeckDock::startRelayClient()
@@ -439,4 +497,16 @@ void DelayDeckDock::onRestartRelayClicked()
 	request_error_label_->hide();
 	relay_client_->suspendTraffic();
 	relay_process_->restartRelay();
+}
+
+void DelayDeckDock::onEnableSlateSceneChanged()
+{
+	slate_scene_controller_.setEnableSceneName(
+		enable_slate_scene_combo_->currentData().toString());
+}
+
+void DelayDeckDock::onReturnSlateSceneChanged()
+{
+	slate_scene_controller_.setReturnSceneName(
+		return_slate_scene_combo_->currentData().toString());
 }

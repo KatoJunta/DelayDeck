@@ -10,6 +10,7 @@ import (
 const defaultRTMPPort = "1935"
 
 type Destination struct {
+	Scheme    string
 	HostPort  string
 	App       string
 	StreamKey string
@@ -53,6 +54,7 @@ func ParseDestination(serverURL, streamKey string) (Destination, error) {
 	}
 
 	return Destination{
+		Scheme:    parsed.Scheme,
 		HostPort:  hostPort,
 		App:       app,
 		StreamKey: streamKey,

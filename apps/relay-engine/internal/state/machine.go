@@ -57,8 +57,10 @@ type Machine struct {
 	lastError           string
 	updatedAt           time.Time
 
-	transitionDelay time.Duration
-	listeners       []Listener
+	transitionDelay  time.Duration
+	transitionEpoch  uint64
+	listeners        []Listener
+	forwarding       ForwardingCoordinator
 }
 
 func NewMachine(bufferCapacityBytes int64, transitionDelay time.Duration) *Machine {
@@ -75,6 +77,16 @@ func (m *Machine) OnChange(listener Listener) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.listeners = append(m.listeners, listener)
+}
+
+func (m *Machine) SetEnableDelayCoordinator(coordinator EnableDelayCoordinator) {
+	m.SetForwardingCoordinator(coordinator)
+}
+
+func (m *Machine) SetForwardingCoordinator(coordinator ForwardingCoordinator) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.forwarding = coordinator
 }
 
 func (m *Machine) Snapshot() StatusSnapshot {
@@ -106,14 +118,51 @@ func (m *Machine) ConnectOutput() error {
 }
 
 func (m *Machine) DisconnectSession() error {
-	switch m.CurrentState() {
+	state := m.CurrentState()
+	switch state {
 	case Ready:
 		return nil
-	case Ingesting, Realtime:
+	case Ingesting, Realtime,
+		BufferingToDelay, SafeHold, Delayed,
+		ReturningToRealtime, Dumping, Error:
+		m.invalidateTransitions()
 		return m.apply(Ready, "session_stopped")
 	default:
-		return &TransitionError{From: m.CurrentState(), Trigger: "session_stopped"}
+		return &TransitionError{From: state, Trigger: "session_stopped"}
 	}
+}
+
+func (m *Machine) PrepareNewSession() {
+	m.mu.Lock()
+	m.targetDelaySeconds = 0
+	m.activeDelaySeconds = 0
+	m.bufferUsagePercent = 0
+	m.bufferUsedBytes = 0
+	m.lastError = ""
+	m.updatedAt = time.Now().UTC()
+	m.mu.Unlock()
+}
+
+func (m *Machine) invalidateTransitions() {
+	m.mu.Lock()
+	m.transitionEpoch++
+	m.transitionPending = false
+	m.slateMessage = ""
+	m.countdownSeconds = 0
+	m.updatedAt = time.Now().UTC()
+	m.mu.Unlock()
+}
+
+func (m *Machine) captureTransitionEpoch() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.transitionEpoch
+}
+
+func (m *Machine) transitionActive(epoch uint64) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return epoch == m.transitionEpoch
 }
 
 func (m *Machine) MockConnectInput() error {
@@ -175,7 +224,19 @@ func (m *Machine) EnableDelay(targetSeconds int) error {
 		return err
 	}
 
-	go m.runEnableDelaySequence(targetSeconds)
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+	if coordinator != nil {
+		if err := coordinator.BeginEnableDelay(targetSeconds); err != nil {
+			m.clearTransitionPending()
+			_ = m.apply(Realtime, "enable_delay_aborted")
+			return err
+		}
+	}
+
+	epoch := m.captureTransitionEpoch()
+	go m.runEnableDelaySequence(targetSeconds, epoch)
 	return nil
 }
 
@@ -198,7 +259,19 @@ func (m *Machine) ReturnLive() error {
 		return err
 	}
 
-	go m.runReturnLiveSequence()
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+	if coordinator != nil {
+		if err := coordinator.BeginReturnLive(); err != nil {
+			m.clearTransitionPending()
+			_ = m.apply(Delayed, "return_live_aborted")
+			return err
+		}
+	}
+
+	epoch := m.captureTransitionEpoch()
+	go m.runReturnLiveSequence(epoch)
 	return nil
 }
 
@@ -221,7 +294,19 @@ func (m *Machine) DumpBuffer() error {
 		return err
 	}
 
-	go m.runDumpBufferSequence()
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+	if coordinator != nil {
+		if err := coordinator.BeginDumpSlate(); err != nil {
+			m.clearTransitionPending()
+			_ = m.apply(Delayed, "dump_buffer_aborted")
+			return err
+		}
+	}
+
+	epoch := m.captureTransitionEpoch()
+	go m.runDumpBufferSequence(epoch)
 	return nil
 }
 
@@ -291,7 +376,15 @@ func canTransition(from, to State, trigger string) bool {
 	case "output_connected":
 		return from == Ingesting && to == Realtime
 	case "session_stopped":
-		return (from == Ingesting || from == Realtime) && to == Ready
+		return to == Ready && (from == Ingesting || from == Realtime ||
+			from == BufferingToDelay || from == SafeHold || from == Delayed ||
+			from == ReturningToRealtime || from == Dumping || from == Error)
+	case "return_live_aborted":
+		return from == ReturningToRealtime && to == Delayed
+	case "dump_buffer_aborted":
+		return from == Dumping && to == Delayed
+	case "enable_delay_aborted":
+		return from == BufferingToDelay && to == Realtime
 	case "enable_delay":
 		return from == Realtime && to == BufferingToDelay
 	case "buffering_show_safe_slate":
@@ -323,46 +416,133 @@ func canTransition(from, to State, trigger string) bool {
 	}
 }
 
-func (m *Machine) runEnableDelaySequence(targetSeconds int) {
+func (m *Machine) runEnableDelaySequence(targetSeconds int, epoch uint64) {
 	defer m.clearTransitionPending()
 	defer m.clearOperatorDisplay()
 
+	if !m.transitionActive(epoch) {
+		return
+	}
+
 	m.waitTransitionDelay()
+	if !m.transitionActive(epoch) {
+		return
+	}
 	if err := m.apply(SafeHold, "buffering_show_safe_slate"); err != nil {
 		return
 	}
 
-	m.mockCountdownFill(targetSeconds)
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+
+	if coordinator != nil {
+		coordinator.RunEnableDelayFill(targetSeconds, m.publishOperatorDisplay)
+		if !m.transitionActive(epoch) {
+			return
+		}
+		coordinator.CompleteEnableDelay()
+	} else {
+		m.mockCountdownFill(targetSeconds)
+	}
+
+	if !m.transitionActive(epoch) {
+		return
+	}
 
 	m.waitTransitionDelay()
 	_ = m.apply(Delayed, "buffer_filled")
 }
 
-func (m *Machine) runReturnLiveSequence() {
+func (m *Machine) runReturnLiveSequence(epoch uint64) {
 	defer m.clearTransitionPending()
 	defer m.clearOperatorDisplay()
 
-	drainSeconds := m.snapshotActiveDelaySeconds()
-	m.mockDrainAt1x(drainSeconds)
+	if !m.transitionActive(epoch) {
+		return
+	}
+
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+
+	if coordinator != nil {
+		coordinator.RunReturnLiveDrain(m.publishOperatorDisplay)
+		if !m.transitionActive(epoch) {
+			return
+		}
+	} else {
+		drainSeconds := m.snapshotActiveDelaySeconds()
+		m.mockDrainAt1x(drainSeconds)
+	}
+
+	if !m.transitionActive(epoch) {
+		return
+	}
 
 	m.waitTransitionDelay()
 	if err := m.apply(SafeHold, "returning_show_safe_slate"); err != nil {
 		return
 	}
 
-	m.mockShowReturnLiveSlate()
+	if !m.transitionActive(epoch) {
+		return
+	}
+
+	if coordinator != nil {
+		coordinator.RunReturnLiveSlate(m.publishOperatorDisplay)
+		if !m.transitionActive(epoch) {
+			return
+		}
+		coordinator.ResumePassthrough()
+	} else {
+		m.mockShowReturnLiveSlate()
+	}
+
+	if !m.transitionActive(epoch) {
+		return
+	}
 
 	_ = m.apply(Realtime, "return_live_complete")
 }
 
-func (m *Machine) runDumpBufferSequence() {
+func (m *Machine) runDumpBufferSequence(epoch uint64) {
 	defer m.clearTransitionPending()
 	defer m.clearOperatorDisplay()
 
-	m.discardBuffer()
+	if !m.transitionActive(epoch) {
+		return
+	}
+
+	m.mu.Lock()
+	coordinator := m.forwarding
+	m.mu.Unlock()
+	if coordinator == nil {
+		m.discardBuffer()
+	}
+
+	if !m.transitionActive(epoch) {
+		return
+	}
 
 	m.waitTransitionDelay()
 	if err := m.apply(SafeHold, "dump_complete"); err != nil {
+		return
+	}
+
+	if !m.transitionActive(epoch) {
+		return
+	}
+
+	if coordinator != nil {
+		coordinator.RunDumpSlate(m.publishOperatorDisplay)
+		if !m.transitionActive(epoch) {
+			return
+		}
+		coordinator.ResumePassthrough()
+	}
+
+	if !m.transitionActive(epoch) {
 		return
 	}
 

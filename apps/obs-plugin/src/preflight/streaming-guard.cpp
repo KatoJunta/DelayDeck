@@ -38,6 +38,8 @@ void StreamingGuard::onFrontendEvent(enum obs_frontend_event event, void *data)
 		return;
 	}
 
+	dock->handleFrontendEvent(event);
+
 	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTING) {
 		const PreflightResult result = dock->runPreflight();
 		dock->setLastPreflightResult(result);

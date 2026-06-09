@@ -26,6 +26,9 @@ type Frame struct {
 	MetaData   []byte
 	Audio      *flvtag.AudioData
 	Video      *flvtag.VideoData
+	// RTMP message bodies copied verbatim from ingest. Used for output passthrough.
+	AudioPayload []byte
+	VideoPayload []byte
 }
 
 func (f Frame) ByteSize() int64 {
@@ -38,11 +41,17 @@ func (f Frame) ByteSize() int64 {
 	case KindOnMetaData:
 		return int64(len(f.MetaData))
 	case KindAudio:
+		if len(f.AudioPayload) > 0 {
+			return int64(len(f.AudioPayload))
+		}
 		if f.Audio == nil {
 			return 0
 		}
 		return int64(audioPayloadSize(f.Audio))
 	case KindVideo:
+		if len(f.VideoPayload) > 0 {
+			return int64(len(f.VideoPayload))
+		}
 		if f.Video == nil {
 			return 0
 		}

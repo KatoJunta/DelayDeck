@@ -37,6 +37,12 @@ func run(args []string) int {
 	machine := state.NewMachine(cfg.BufferCapacityBytes, cfg.TransitionDelay)
 	server := api.NewServer(machine, cfg.SessionToken, cfg.Mode.String())
 
+	var forwardingCoordinator *ingest.ForwardingCoordinator
+	if cfg.Mode == config.RunModeForwarding {
+		forwardingCoordinator = ingest.NewForwardingCoordinator()
+		machine.SetEnableDelayCoordinator(forwardingCoordinator)
+	}
+
 	if err := machine.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "delaydeck-relay: start state machine: %v\n", err)
 		return 1
@@ -58,7 +64,7 @@ func run(args []string) int {
 		rtmpServer, err := ingest.StartRTMPServer(cfg.IngestListenAddress, dest, machine, ingest.ForwardingOptions{
 			FixedDelaySeconds:   cfg.FixedDelaySeconds,
 			BufferCapacityBytes: cfg.BufferCapacityBytes,
-		})
+		}, forwardingCoordinator)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest server: %v\n", err)
 			return 1

@@ -13,6 +13,9 @@ func TestParseDestination(t *testing.T) {
 	if dest.App != "live2" {
 		t.Fatalf("app = %q", dest.App)
 	}
+	if dest.Scheme != "rtmp" {
+		t.Fatalf("scheme = %q", dest.Scheme)
+	}
 	if dest.StreamKey != "test-key" {
 		t.Fatalf("streamKey = %q", dest.StreamKey)
 	}

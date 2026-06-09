@@ -34,6 +34,20 @@ func (w *recordingWriter) WriteOnMetaData(_ uint32, payload []byte) error {
 	return nil
 }
 
+func (w *recordingWriter) WriteAudioPayload(_ uint32, _ []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.frames = append(w.frames, media.KindAudio)
+	return nil
+}
+
+func (w *recordingWriter) WriteVideoPayload(_ uint32, _ []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.frames = append(w.frames, media.KindVideo)
+	return nil
+}
+
 func (w *recordingWriter) WriteAudioData(_ uint32, _ *flvtag.AudioData) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()

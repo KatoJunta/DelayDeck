@@ -18,7 +18,7 @@ func TestStartRTMPServerAcceptsTCPConnection(t *testing.T) {
 
 	server, err := StartRTMPServer("127.0.0.1:0", dest, machine, ForwardingOptions{
 		BufferCapacityBytes: 512 * 1024 * 1024,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("start RTMP server: %v", err)
 	}

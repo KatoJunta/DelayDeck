@@ -1,14 +1,12 @@
 package ingest
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"sync"
 
-	flvtag "github.com/yutopp/go-flv/tag"
 	"github.com/yutopp/go-rtmp"
 	rtmpmsg "github.com/yutopp/go-rtmp/message"
 
@@ -31,6 +29,7 @@ type RTMPServer struct {
 	machine       *state.Machine
 	dest          output.Destination
 	options       ForwardingOptions
+	coordinator   *ForwardingCoordinator
 	activeHandler *publishHandler
 }
 
@@ -39,6 +38,7 @@ func StartRTMPServer(
 	dest output.Destination,
 	machine *state.Machine,
 	options ForwardingOptions,
+	coordinator *ForwardingCoordinator,
 ) (*RTMPServer, error) {
 	ln, err := net.Listen("tcp", listenAddress)
 	if err != nil {
@@ -46,11 +46,12 @@ func StartRTMPServer(
 	}
 
 	srv := &RTMPServer{
-		ln:      ln,
-		addr:    ln.Addr().String(),
-		machine: machine,
-		dest:    dest,
-		options: options,
+		ln:          ln,
+		addr:        ln.Addr().String(),
+		machine:     machine,
+		dest:        dest,
+		options:     options,
+		coordinator: coordinator,
 	}
 
 	rtmpcompat.SetMetaForwarder(srv)
@@ -126,6 +127,7 @@ func (h *publishHandler) OnPublish(_ *rtmp.StreamContext, _ uint32, cmd *rtmpmsg
 	if err := h.server.machine.DisconnectSession(); err != nil {
 		return err
 	}
+	h.server.machine.PrepareNewSession()
 
 	publisher, err := output.ConnectPublisher(h.server.dest)
 	if err != nil {
@@ -144,13 +146,14 @@ func (h *publishHandler) OnPublish(_ *rtmp.StreamContext, _ uint32, cmd *rtmpmsg
 
 	h.mu.Lock()
 	h.publisher = publisher
-	if h.server.options.FixedDelaySeconds > 0 {
-		h.pipeline = NewPipeline(
-			publisher,
-			h.server.machine,
-			h.server.options.BufferCapacityBytes,
-			h.server.options.FixedDelaySeconds,
-		)
+	h.pipeline = NewPipeline(
+		publisher,
+		h.server.machine,
+		h.server.options.BufferCapacityBytes,
+		h.server.options.FixedDelaySeconds,
+	)
+	if h.server.coordinator != nil {
+		h.server.coordinator.SetPipeline(h.pipeline)
 	}
 	h.sessionActive = true
 	h.mu.Unlock()
@@ -202,25 +205,22 @@ func (h *publishHandler) OnAudio(timestamp uint32, payload io.Reader) error {
 		return nil
 	}
 
-	var audio flvtag.AudioData
-	if err := flvtag.DecodeAudioData(payload, &audio); err != nil {
-		return fmt.Errorf("decode audio: %w", err)
+	raw, err := io.ReadAll(payload)
+	if err != nil {
+		return fmt.Errorf("read audio payload: %w", err)
 	}
-
-	flvBody := new(bytes.Buffer)
-	if _, err := io.Copy(flvBody, audio.Data); err != nil {
-		return fmt.Errorf("copy audio payload: %w", err)
+	if len(raw) == 0 {
+		return nil
 	}
-	audio.Data = flvBody
 
 	if pipeline != nil && pipeline.Enabled() {
-		if err := pipeline.PushAudio(timestamp, &audio); err != nil {
+		if err := pipeline.PushAudioPayload(timestamp, raw); err != nil {
 			return h.handlePipelineError(err)
 		}
 		return nil
 	}
 
-	if err := publisher.WriteAudioData(timestamp, &audio); err != nil {
+	if err := publisher.WriteAudioPayload(timestamp, raw); err != nil {
 		_ = h.server.machine.MarkError("output write failed")
 		return err
 	}
@@ -236,25 +236,22 @@ func (h *publishHandler) OnVideo(timestamp uint32, payload io.Reader) error {
 		return nil
 	}
 
-	var video flvtag.VideoData
-	if err := flvtag.DecodeVideoData(payload, &video); err != nil {
-		return fmt.Errorf("decode video: %w", err)
+	raw, err := io.ReadAll(payload)
+	if err != nil {
+		return fmt.Errorf("read video payload: %w", err)
 	}
-
-	flvBody := new(bytes.Buffer)
-	if _, err := io.Copy(flvBody, video.Data); err != nil {
-		return fmt.Errorf("copy video payload: %w", err)
+	if len(raw) == 0 {
+		return nil
 	}
-	video.Data = flvBody
 
 	if pipeline != nil && pipeline.Enabled() {
-		if err := pipeline.PushVideo(timestamp, &video); err != nil {
+		if err := pipeline.PushVideoPayload(timestamp, raw); err != nil {
 			return h.handlePipelineError(err)
 		}
 		return nil
 	}
 
-	if err := publisher.WriteVideoData(timestamp, &video); err != nil {
+	if err := publisher.WriteVideoPayload(timestamp, raw); err != nil {
 		_ = h.server.machine.MarkError("output write failed")
 		return err
 	}
@@ -305,6 +302,10 @@ func (h *publishHandler) endSession() {
 	h.pipeline = nil
 	h.sessionActive = false
 	h.mu.Unlock()
+
+	if h.server.coordinator != nil {
+		h.server.coordinator.ClearPipeline()
+	}
 
 	if pipeline != nil {
 		pipeline.Stop()

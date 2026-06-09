@@ -6,14 +6,15 @@ import (
 )
 
 const (
-	mockCountdownTicks     = 10
-	mockReturnSlateSeconds = 3
+	mockCountdownTicks = 10
 )
 
 const (
-	slateEnableDelayFmt   = "Delay activating, %d seconds remaining"
-	slateDrainingBufferFmt = "Playing buffered content, %d seconds remaining"
-	slateReturningLive    = "Returning to realtime"
+	SlateEnableDelayFmt    = "Delay activating, %d seconds remaining"
+	SlateDrainingBufferFmt = "Playing buffered content, %d seconds remaining"
+	SlateReturningLive     = "Returning to realtime"
+	ReturnLiveSlateSeconds = 3
+	DumpSlateSeconds       = 3
 )
 
 func (m *Machine) publishOperatorDisplay(slate string, countdown int) {
@@ -66,7 +67,7 @@ func (m *Machine) mockCountdownFill(targetSeconds int) {
 
 	remaining := targetSeconds
 	for remaining > 0 {
-		m.publishOperatorDisplay(fmt.Sprintf(slateEnableDelayFmt, remaining), remaining)
+		m.publishOperatorDisplay(fmt.Sprintf(SlateEnableDelayFmt, remaining), remaining)
 		filled := targetSeconds - remaining + step
 		if filled > targetSeconds {
 			filled = targetSeconds
@@ -104,7 +105,7 @@ func (m *Machine) mockDrainAt1x(totalSeconds int) {
 
 	remaining := totalSeconds
 	for remaining > 0 {
-		m.publishOperatorDisplay(fmt.Sprintf(slateDrainingBufferFmt, remaining), remaining)
+		m.publishOperatorDisplay(fmt.Sprintf(SlateDrainingBufferFmt, remaining), remaining)
 		m.mockReduceBufferBySeconds(step, totalSeconds)
 		if remaining <= step {
 			remaining = 0
@@ -119,8 +120,8 @@ func (m *Machine) mockDrainAt1x(totalSeconds int) {
 }
 
 func (m *Machine) mockShowReturnLiveSlate() {
-	for remaining := mockReturnSlateSeconds; remaining > 0; remaining-- {
-		m.publishOperatorDisplay(slateReturningLive, remaining)
+	for remaining := ReturnLiveSlateSeconds; remaining > 0; remaining-- {
+		m.publishOperatorDisplay(SlateReturningLive, remaining)
 		m.waitTransitionDelay()
 	}
 	m.publishOperatorDisplay("", 0)

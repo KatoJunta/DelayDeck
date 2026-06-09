@@ -18,22 +18,55 @@ const (
 
 type RTMPPublisher struct {
 	mu     sync.Mutex
+	dest   Destination
 	client *rtmp.ClientConn
 	stream *rtmp.Stream
 	closed bool
 }
 
 func ConnectPublisher(dest Destination) (*RTMPPublisher, error) {
-	client, err := rtmp.Dial("rtmp", dest.HostPort, &rtmp.ConnConfig{})
+	publisher := &RTMPPublisher{dest: dest}
+	if err := publisher.connect(); err != nil {
+		return nil, err
+	}
+	return publisher, nil
+}
+
+func (p *RTMPPublisher) Reconnect() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if err := p.closeLocked(); err != nil {
+		return err
+	}
+	p.closed = false
+	return p.connectLocked()
+}
+
+func (p *RTMPPublisher) connect() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.connectLocked()
+}
+
+func (p *RTMPPublisher) connectLocked() error {
+	var client *rtmp.ClientConn
+	var err error
+	switch p.dest.Scheme {
+	case "rtmps":
+		client, err = rtmp.TLSDial("rtmps", p.dest.HostPort, &rtmp.ConnConfig{}, nil)
+	default:
+		client, err = rtmp.Dial("rtmp", p.dest.HostPort, &rtmp.ConnConfig{})
+	}
 	if err != nil {
-		return nil, fmt.Errorf("dial output %s: %w", dest.HostPort, err)
+		return fmt.Errorf("dial output %s: %w", p.dest.HostPort, err)
 	}
 
 	connectBody := &rtmpmsg.NetConnectionConnect{
 		Command: rtmpmsg.NetConnectionConnectCommand{
-			App:            dest.App,
+			App:            p.dest.App,
 			FlashVer:       "FMLE/3.0 (compatible; DelayDeck Relay)",
-			TCURL:          dest.TCURL,
+			TCURL:          p.dest.TCURL,
 			Fpad:           false,
 			Capabilities:   15,
 			AudioCodecs:    3191,
@@ -44,27 +77,26 @@ func ConnectPublisher(dest Destination) (*RTMPPublisher, error) {
 	}
 	if err := client.Connect(connectBody); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("connect output: %w", err)
+		return fmt.Errorf("connect output: %w", err)
 	}
 
 	stream, err := client.CreateStream(nil, 4096)
 	if err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("create output stream: %w", err)
+		return fmt.Errorf("create output stream: %w", err)
 	}
 
 	if err := stream.Publish(&rtmpmsg.NetStreamPublish{
-		PublishingName: dest.StreamKey,
+		PublishingName: p.dest.StreamKey,
 		PublishingType: "live",
 	}); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("publish output stream: %w", err)
+		return fmt.Errorf("publish output stream: %w", err)
 	}
 
-	return &RTMPPublisher{
-		client: client,
-		stream: stream,
-	}, nil
+	p.client = client
+	p.stream = stream
+	return nil
 }
 
 func (p *RTMPPublisher) WriteSetDataFrame(timestamp uint32, frame *rtmpmsg.NetStreamSetDataFrame) error {
@@ -79,6 +111,20 @@ func (p *RTMPPublisher) WriteOnMetaData(timestamp uint32, payload []byte) error 
 		return nil
 	}
 	return p.writeNamedData(timestamp, "onMetaData", payload)
+}
+
+func (p *RTMPPublisher) WriteAudioPayload(timestamp uint32, payload []byte) error {
+	if len(payload) == 0 {
+		return nil
+	}
+	return p.writeAudioBytes(timestamp, payload)
+}
+
+func (p *RTMPPublisher) WriteVideoPayload(timestamp uint32, payload []byte) error {
+	if len(payload) == 0 {
+		return nil
+	}
+	return p.writeVideoBytes(timestamp, payload)
 }
 
 func (p *RTMPPublisher) WriteAudioData(timestamp uint32, audio *flvtag.AudioData) error {

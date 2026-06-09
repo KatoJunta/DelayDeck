@@ -22,6 +22,8 @@ set(PLUGIN_SOURCES
     src/plugin-main.cpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
+    src/obs/slate-scene-controller.cpp
+    src/obs/slate-scene-controller.hpp
     src/relay/relay-client.cpp
     src/relay/relay-client.hpp
     src/relay/relay-process.cpp
