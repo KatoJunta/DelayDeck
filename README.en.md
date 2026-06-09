@@ -151,6 +151,9 @@ Close OBS Studio before installing. Make sure it is not still running in the bac
 1. Launch OBS. A **DelayDeck** dock should appear. If not, open **Docks → DelayDeck** from the menu bar.
 2. Click **Configure Destination** in the dock and save your viewer-facing RTMP URL and stream key.
 3. In advanced settings, choose **Enable slate scene** and **Return slate scene** (shown to viewers during transitions).
+
+   > **Important (slate scenes):** Do not include **microphone** or **desktop audio** (game audio, etc.) in the audio mixer for these two scenes. Realtime audio would reach viewers during transitions and defeat the purpose of delay. Setting up **BGM only** is fine.
+
 4. If **Settings → Output → Stream Delay** is enabled in OBS, turn it **off**. DelayDeck cannot be used together with OBS built-in stream delay.
 
 > **Done:** Run a test stream before using DelayDeck on a live broadcast.
