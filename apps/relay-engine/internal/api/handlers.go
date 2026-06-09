@@ -103,7 +103,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	mode := s.runMode
 	if mode == "" {
-		mode = "mock"
+		mode = "forwarding"
 	}
 
 	writeJSON(w, http.StatusOK, HealthResponse{

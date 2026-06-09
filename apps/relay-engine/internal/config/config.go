@@ -14,7 +14,6 @@ type Config struct {
 	SessionToken        string
 	OutputURL           string
 	OutputStreamKey     string
-	MockAutoConnect     bool
 	TransitionDelay     time.Duration
 	BufferCapacityBytes int64
 	FixedDelaySeconds   int
@@ -23,14 +22,12 @@ type Config struct {
 func ParseFlags(args []string) (*Config, error) {
 	fs := flag.NewFlagSet("delaydeck-relay", flag.ContinueOnError)
 
-	mode := fs.String("mode", string(RunModeMock), "relay mode: mock or forwarding")
 	listen := fs.String("listen", "127.0.0.1:9400", "HTTP listen address")
 	ingestListen := fs.String("ingest-listen", "127.0.0.1:9401", "ingest listen address")
 	token := fs.String("token", "", "session token (auto-generated when empty)")
-	outputURL := fs.String("output-url", "", "output RTMP server URL (forwarding mode)")
-	outputStreamKey := fs.String("output-stream-key", "", "output stream key (forwarding mode)")
-	mockAutoConnect := fs.Bool("mock-auto-connect", true, "auto-advance READY to REALTIME in mock mode")
-	transitionMS := fs.Int("transition-ms", 50, "mock transition delay in milliseconds")
+	outputURL := fs.String("output-url", "", "output RTMP server URL")
+	outputStreamKey := fs.String("output-stream-key", "", "output stream key")
+	transitionMS := fs.Int("transition-ms", 50, "state transition delay in milliseconds")
 	bufferCapacity := fs.Int64("buffer-capacity-bytes", 512*1024*1024, "buffer capacity in bytes")
 	fixedDelay := fs.Int("fixed-delay-seconds", 0, "fixed output delay in seconds (0 = realtime passthrough)")
 
@@ -69,11 +66,6 @@ func ParseFlags(args []string) (*Config, error) {
 		resolvedFixedDelay = parsed
 	}
 
-	runMode := RunMode(*mode)
-	if !runMode.Valid() {
-		return nil, fmt.Errorf("mode must be mock or forwarding")
-	}
-
 	resolvedOutputURL := *outputURL
 	if resolvedOutputURL == "" {
 		resolvedOutputURL = os.Getenv("DELAYDECK_OUTPUT_URL")
@@ -83,25 +75,20 @@ func ParseFlags(args []string) (*Config, error) {
 		resolvedOutputKey = os.Getenv("DELAYDECK_OUTPUT_STREAM_KEY")
 	}
 
-	autoConnect := *mockAutoConnect
-	if runMode == RunModeForwarding {
-		autoConnect = false
-		if resolvedOutputURL == "" {
-			return nil, fmt.Errorf("forwarding mode requires --output-url or DELAYDECK_OUTPUT_URL")
-		}
-		if resolvedOutputKey == "" {
-			return nil, fmt.Errorf("forwarding mode requires --output-stream-key or DELAYDECK_OUTPUT_STREAM_KEY")
-		}
+	if resolvedOutputURL == "" {
+		return nil, fmt.Errorf("output destination requires --output-url or DELAYDECK_OUTPUT_URL")
+	}
+	if resolvedOutputKey == "" {
+		return nil, fmt.Errorf("output destination requires --output-stream-key or DELAYDECK_OUTPUT_STREAM_KEY")
 	}
 
 	return &Config{
-		Mode:                runMode,
+		Mode:                RunModeForwarding,
 		ListenAddress:       *listen,
 		IngestListenAddress: *ingestListen,
 		SessionToken:        sessionToken,
 		OutputURL:           resolvedOutputURL,
 		OutputStreamKey:     resolvedOutputKey,
-		MockAutoConnect:     autoConnect,
 		TransitionDelay:     time.Duration(*transitionMS) * time.Millisecond,
 		BufferCapacityBytes: *bufferCapacity,
 		FixedDelaySeconds:   resolvedFixedDelay,

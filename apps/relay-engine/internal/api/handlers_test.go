@@ -20,7 +20,7 @@ const testToken = "test-session-token"
 func newTestServer(t *testing.T) (*api.Server, *state.Machine) {
 	t.Helper()
 	machine := state.NewMachine(512*1024*1024, 0)
-	server := api.NewServer(machine, testToken, "mock")
+	server := api.NewServer(machine, testToken, "forwarding")
 
 	must(t, machine.Start())
 	must(t, machine.MarkReady())
@@ -67,8 +67,8 @@ func TestHealthEndpoint(t *testing.T) {
 	if payload["healthy"] != true {
 		t.Fatalf("expected healthy=true, got %v", payload["healthy"])
 	}
-	if payload["mode"] != "mock" {
-		t.Fatalf("expected mode=mock, got %v", payload["mode"])
+	if payload["mode"] != "forwarding" {
+		t.Fatalf("expected mode=forwarding, got %v", payload["mode"])
 	}
 }
 
@@ -102,7 +102,7 @@ func TestStatusEndpoint(t *testing.T) {
 
 func TestEnableDelayConflictFromReady(t *testing.T) {
 	machine := state.NewMachine(512*1024*1024, 0)
-	server := api.NewServer(machine, testToken, "mock")
+	server := api.NewServer(machine, testToken, "forwarding")
 	must(t, machine.Start())
 	must(t, machine.MarkReady())
 

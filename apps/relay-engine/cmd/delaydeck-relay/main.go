@@ -37,11 +37,8 @@ func run(args []string) int {
 	machine := state.NewMachine(cfg.BufferCapacityBytes, cfg.TransitionDelay)
 	server := api.NewServer(machine, cfg.SessionToken, cfg.Mode.String())
 
-	var forwardingCoordinator *ingest.ForwardingCoordinator
-	if cfg.Mode == config.RunModeForwarding {
-		forwardingCoordinator = ingest.NewForwardingCoordinator()
-		machine.SetEnableDelayCoordinator(forwardingCoordinator)
-	}
+	forwardingCoordinator := ingest.NewForwardingCoordinator()
+	machine.SetEnableDelayCoordinator(forwardingCoordinator)
 
 	if err := machine.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "delaydeck-relay: start state machine: %v\n", err)
@@ -52,38 +49,22 @@ func run(args []string) int {
 		return 1
 	}
 
-	var ingestAddress string
-	switch cfg.Mode {
-	case config.RunModeForwarding:
-		dest, err := output.ParseDestination(cfg.OutputURL, cfg.OutputStreamKey)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "delaydeck-relay: output destination: %v\n", err)
-			return 1
-		}
-
-		rtmpServer, err := ingest.StartRTMPServer(cfg.IngestListenAddress, dest, machine, ingest.ForwardingOptions{
-			FixedDelaySeconds:   cfg.FixedDelaySeconds,
-			BufferCapacityBytes: cfg.BufferCapacityBytes,
-		}, forwardingCoordinator)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest server: %v\n", err)
-			return 1
-		}
-		defer rtmpServer.Close()
-		ingestAddress = rtmpServer.Address()
-	default:
-		mockListener, err := ingest.StartMockListener(cfg.IngestListenAddress)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest listener: %v\n", err)
-			return 1
-		}
-		defer mockListener.Close()
-		ingestAddress = mockListener.Address()
-
-		if cfg.MockAutoConnect {
-			go mockConnect(machine)
-		}
+	dest, err := output.ParseDestination(cfg.OutputURL, cfg.OutputStreamKey)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "delaydeck-relay: output destination: %v\n", err)
+		return 1
 	}
+
+	rtmpServer, err := ingest.StartRTMPServer(cfg.IngestListenAddress, dest, machine, ingest.ForwardingOptions{
+		FixedDelaySeconds:   cfg.FixedDelaySeconds,
+		BufferCapacityBytes: cfg.BufferCapacityBytes,
+	}, forwardingCoordinator)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest server: %v\n", err)
+		return 1
+	}
+	defer rtmpServer.Close()
+	ingestAddress := rtmpServer.Address()
 
 	httpServer := &http.Server{
 		Addr:              cfg.ListenAddress,
@@ -93,8 +74,8 @@ func run(args []string) int {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("delaydeck-relay listening on %s (mode=%s, ingest %s, fixed_delay=%ds)",
-			cfg.ListenAddress, cfg.Mode, ingestAddress, cfg.FixedDelaySeconds)
+		log.Printf("delaydeck-relay listening on %s (ingest %s, fixed_delay=%ds)",
+			cfg.ListenAddress, ingestAddress, cfg.FixedDelaySeconds)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
@@ -117,16 +98,4 @@ func run(args []string) int {
 		return 1
 	}
 	return 0
-}
-
-func mockConnect(machine *state.Machine) {
-	time.Sleep(10 * time.Millisecond)
-	if err := machine.MockConnectInput(); err != nil {
-		log.Printf("mock connect input failed: %v", err)
-		return
-	}
-	if err := machine.MockConnectOutput(); err != nil {
-		log.Printf("mock connect output failed: %v", err)
-		return
-	}
 }

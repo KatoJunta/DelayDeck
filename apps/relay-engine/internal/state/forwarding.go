@@ -1,7 +1,7 @@
 package state
 
 // ForwardingCoordinator drives control transitions against a live media pipeline.
-// When nil, the state machine uses timed mock transitions for mock mode.
+// When nil, the state machine falls back to timed transitions for unit tests.
 type ForwardingCoordinator interface {
 	BeginEnableDelay(targetSeconds int) error
 	RunEnableDelayFill(targetSeconds int, publish func(slate string, countdown int))

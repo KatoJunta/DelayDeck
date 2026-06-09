@@ -2,13 +2,10 @@ package config
 
 type RunMode string
 
-const (
-	RunModeMock       RunMode = "mock"
-	RunModeForwarding RunMode = "forwarding"
-)
+const RunModeForwarding RunMode = "forwarding"
 
 func (m RunMode) Valid() bool {
-	return m == RunModeMock || m == RunModeForwarding
+	return m == RunModeForwarding
 }
 
 func (m RunMode) String() string {

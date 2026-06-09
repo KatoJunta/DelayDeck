@@ -34,9 +34,6 @@ public:
 	bool saveDestination(const QString &outputUrl, const QString &streamKey);
 	void clearDestination();
 
-	QString resolvedRelayMode() const;
-	bool envOverridesConfigured() const;
-
 	void loadFromObsData(obs_data_t *data);
 	void saveToObsData(obs_data_t *data) const;
 

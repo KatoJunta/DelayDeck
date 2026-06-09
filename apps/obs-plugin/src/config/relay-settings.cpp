@@ -117,26 +117,6 @@ void RelaySettings::clearDestination()
 	obs_frontend_save();
 }
 
-QString RelaySettings::resolvedRelayMode() const
-{
-	const QString envMode = envOrDefault("DELAYDECK_RELAY_MODE").toLower();
-	if (!envMode.isEmpty()) {
-		return envMode;
-	}
-
-	if (isSetupComplete()) {
-		return QStringLiteral("forwarding");
-	}
-
-	return {};
-}
-
-bool RelaySettings::envOverridesConfigured() const
-{
-	return envForwardingConfigured() ||
-	       !envOrDefault("DELAYDECK_RELAY_MODE").isEmpty();
-}
-
 void RelaySettings::loadFromObsData(obs_data_t *data)
 {
 	if (!data) {

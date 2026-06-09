@@ -12,3 +12,10 @@ apps/obs-plugin/build/
 apps/obs-plugin/*.dll
 apps/obs-plugin/*.so
 apps/obs-plugin/*.dylib
+apps/obs-plugin/*.pdb
+apps/obs-plugin/*.ilk
+apps/obs-plugin/*.exp
+
+# Local secrets
+.env
+*.dpapi

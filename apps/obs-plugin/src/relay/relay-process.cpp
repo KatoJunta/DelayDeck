@@ -121,10 +121,16 @@ void RelayProcess::startRelay()
 	const QString ingest_listen = envOrDefault(
 		"DELAYDECK_INGEST_LISTEN",
 		QString::fromUtf8(delaydeck::kDefaultIngestListen));
-	const QString relay_mode =
-		delaydeck::RelaySettings::instance().resolvedRelayMode();
+	if (!delaydeck::RelaySettings::instance().isSetupComplete()) {
+		last_error_ = QStringLiteral(
+			"relay destination is not configured; open DelayDeck setup");
+		setState(RelayProcessState::FailedToStart);
+		return;
+	}
 
-	if (relay_mode.isEmpty()) {
+	const delaydeck::RelayDestination dest =
+		delaydeck::RelaySettings::instance().destination();
+	if (!dest.isComplete()) {
 		last_error_ = QStringLiteral(
 			"relay destination is not configured; open DelayDeck setup");
 		setState(RelayProcessState::FailedToStart);
@@ -133,33 +139,13 @@ void RelayProcess::startRelay()
 
 	QStringList args{QStringLiteral("--listen"), listen_address_,
 			 QStringLiteral("--ingest-listen"), ingest_listen,
-			 QStringLiteral("--mode"), relay_mode};
+			 QStringLiteral("--output-url"), dest.outputUrl,
+			 QStringLiteral("--output-stream-key"), dest.streamKey};
 
-	if (relay_mode == QStringLiteral("forwarding")) {
-		const delaydeck::RelayDestination dest =
-			delaydeck::RelaySettings::instance().destination();
-		if (!dest.isComplete()) {
-			last_error_ = QStringLiteral(
-				"relay destination is not configured; open DelayDeck setup");
-			setState(RelayProcessState::FailedToStart);
-			return;
-		}
-		args << QStringLiteral("--output-url") << dest.outputUrl
-		     << QStringLiteral("--output-stream-key") << dest.streamKey;
-
-		const QString fixed_delay =
-			envOrDefault("DELAYDECK_FIXED_DELAY_SECONDS", QString());
-		if (!fixed_delay.isEmpty()) {
-			args << QStringLiteral("--fixed-delay-seconds")
-			     << fixed_delay;
-		}
-	} else if (relay_mode == QStringLiteral("mock")) {
-		args << QStringLiteral("--mock-auto-connect");
-	} else {
-		last_error_ =
-			QStringLiteral("unsupported relay mode: %1").arg(relay_mode);
-		setState(RelayProcessState::FailedToStart);
-		return;
+	const QString fixed_delay =
+		envOrDefault("DELAYDECK_FIXED_DELAY_SECONDS", QString());
+	if (!fixed_delay.isEmpty()) {
+		args << QStringLiteral("--fixed-delay-seconds") << fixed_delay;
 	}
 
 	process_.setArguments(args);

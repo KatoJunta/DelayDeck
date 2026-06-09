@@ -14,7 +14,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $dllSrc = Join-Path $repoRoot "apps\obs-plugin\build\RelWithDebInfo\delaydeck.dll"
-$relaySrc = Join-Path $repoRoot "apps\relay-engine\delaydeck-relay.exe"
+$relayDir = Join-Path $repoRoot "apps\relay-engine"
+$relaySrc = Join-Path $relayDir "delaydeck-relay.exe"
 $localeSrc = Join-Path $repoRoot "apps\obs-plugin\data\locale\en-US.ini"
 
 if (-not (Test-Path $dllSrc)) {
@@ -22,7 +23,17 @@ if (-not (Test-Path $dllSrc)) {
 }
 
 if (-not (Test-Path $relaySrc)) {
-    Write-Error "Relay binary not found. Build first: pushd apps\relay-engine; go build -o delaydeck-relay.exe ./cmd/delaydeck-relay; popd"
+    Write-Host "Building delaydeck-relay: $relaySrc"
+    Push-Location $relayDir
+    try {
+        go build -o $relaySrc ./cmd/delaydeck-relay
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "go build failed (exit $LASTEXITCODE)"
+        }
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 if (-not (Test-Path $localeSrc)) {
