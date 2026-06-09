@@ -1,6 +1,8 @@
 #include "delaydeck-dock.hpp"
 
 #include "config/dock-settings.hpp"
+#include "config/relay-settings.hpp"
+#include "config/setup-dialog.hpp"
 #include "locale/tr.hpp"
 #include "preflight/preflight-checker.hpp"
 #include "preflight/preflight-dialog.hpp"
@@ -10,6 +12,7 @@
 #include <obs-frontend-api.h>
 #include <obs.hpp>
 
+#include <QDialog>
 #include <QGridLayout>
 #include <QHash>
 #include <QHBoxLayout>
@@ -311,6 +314,10 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	restart_relay_button_ = new QPushButton(delaydeck::tr("Button.RestartRelay"), this);
 	layout->addWidget(restart_relay_button_);
 
+	setup_destination_button_ =
+		new QPushButton(delaydeck::tr("Button.SetupDestination"), this);
+	layout->addWidget(setup_destination_button_);
+
 	advanced_toggle_button_ = new QPushButton(delaydeck::tr("Section.ShowAdvanced"), this);
 	advanced_toggle_button_->setCheckable(true);
 	layout->addWidget(advanced_toggle_button_);
@@ -372,6 +379,8 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		&DelayDeckDock::onDumpBufferClicked);
 	connect(restart_relay_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onRestartRelayClicked);
+	connect(setup_destination_button_, &QPushButton::clicked, this,
+		&DelayDeckDock::openSetupDialog);
 	connect(advanced_toggle_button_, &QPushButton::toggled, this,
 		&DelayDeckDock::onAdvancedToggled);
 	connect(target_delay_spin_, qOverload<int>(&QSpinBox::valueChanged), this,
@@ -394,7 +403,6 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 
 	if (relay_process_->isManaged()) {
 		process_state_ = RelayProcessState::Idle;
-		relay_process_->startRelay();
 	} else {
 		process_state_ = RelayProcessState::Unmanaged;
 		startRelayClient();
@@ -410,13 +418,26 @@ void DelayDeckDock::handleFrontendEvent(enum obs_frontend_event event)
 		return;
 	}
 
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPING) {
+		QTimer::singleShot(0, this, [this]() { notifyObsStopDiscardedDelay(); });
+		return;
+	}
+
 	if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED) {
 		auto_delay_triggered_ = false;
 		return;
 	}
 
-	if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
-	    event != OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED &&
+	if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING) {
+		QTimer::singleShot(0, this, [this]() {
+			syncManagedRelayStartup();
+			maybePromptSetup();
+			refreshSceneSelectors();
+		});
+		return;
+	}
+
+	if (event != OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED &&
 	    event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
 		return;
 	}
@@ -953,4 +974,90 @@ void DelayDeckDock::onReturnSlateSceneChanged()
 	slate_scene_controller_.setReturnSceneName(
 		return_slate_scene_combo_->currentData().toString());
 	scheduleSettingsSave();
+}
+
+void DelayDeckDock::syncManagedRelayStartup()
+{
+	if (!relay_process_->isManaged()) {
+		return;
+	}
+
+	const RelayProcessState relayState = relay_process_->state();
+	if (relayState == RelayProcessState::Running ||
+	    relayState == RelayProcessState::Starting ||
+	    relayState == RelayProcessState::Stopping) {
+		return;
+	}
+
+	if (delaydeck::RelaySettings::instance().isSetupComplete()) {
+		clearError();
+		process_state_ = RelayProcessState::Idle;
+		relay_process_->startRelay();
+		updateProcessDisplay();
+		updateButtonStates();
+		return;
+	}
+
+	process_state_ = RelayProcessState::FailedToStart;
+	showError(delaydeck::tr("Setup.Required"));
+	updateProcessDisplay();
+	updateButtonStates();
+}
+
+void DelayDeckDock::openSetupDialog()
+{
+	if (obs_frontend_streaming_active()) {
+		QMessageBox::warning(this, delaydeck::tr("Setup.Title"),
+				     delaydeck::tr("Setup.Error.StreamingActive"));
+		return;
+	}
+
+	delaydeck::SetupDialog dialog(this);
+	if (dialog.exec() != QDialog::Accepted) {
+		return;
+	}
+
+	clearError();
+	if (relay_process_->isManaged()) {
+		relay_process_->restartRelay();
+	}
+}
+
+void DelayDeckDock::maybePromptSetup()
+{
+	if (setup_prompt_shown_) {
+		return;
+	}
+	if (!relay_process_->isManaged()) {
+		return;
+	}
+	if (delaydeck::RelaySettings::instance().isSetupComplete()) {
+		return;
+	}
+
+	setup_prompt_shown_ = true;
+	openSetupDialog();
+}
+
+bool DelayDeckDock::hadActiveDelayBuffer() const
+{
+	if (active_delay_seconds_ > 0) {
+		return true;
+	}
+
+	return relay_state_ == QStringLiteral("DELAYED") ||
+	       relay_state_ == QStringLiteral("RETURNING_TO_REALTIME") ||
+	       relay_state_ == QStringLiteral("BUFFERING_TO_DELAY") ||
+	       relay_state_ == QStringLiteral("DUMPING");
+}
+
+void DelayDeckDock::notifyObsStopDiscardedDelay()
+{
+	if (!hadActiveDelayBuffer()) {
+		return;
+	}
+
+	QMessageBox::information(
+		this, delaydeck::tr("ObsStopDelayDiscarded.Title"),
+		delaydeck::tr("ObsStopDelayDiscarded.Message"));
 }

@@ -1,7 +1,10 @@
-# Launch OBS with DelayDeck managed Relay (Phase 4).
+# Launch OBS with DelayDeck managed Relay (Phase 4+).
 #
 # Usage:
 #   .\scripts\dev\start-obs-dev.ps1
+#
+# Normal use: configure destination once in the DelayDeck dock ("Configure Destination").
+# Environment variables below are optional overrides for development.
 #
 # Do not run start-relay-mock.ps1 at the same time — both bind 127.0.0.1:9400
 # and the Dock may appear to reconnect to the wrong relay after a kill test.

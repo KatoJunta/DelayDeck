@@ -1,5 +1,7 @@
 #include "preflight-checker.hpp"
 
+#include "config/relay-settings.hpp"
+
 #include "relay/relay-types.hpp"
 
 #include <obs-frontend-api.h>
@@ -56,9 +58,9 @@ bool PreflightChecker::delayDeckModeEnabled()
 
 bool PreflightChecker::ingestEndpoint(QString *host, quint16 *port)
 {
-	const auto endpoint =
-		envOrDefault("DELAYDECK_INGEST_LISTEN",
-			     QStringLiteral("127.0.0.1:9401"));
+	const auto endpoint = envOrDefault(
+		"DELAYDECK_INGEST_LISTEN",
+		QString::fromUtf8(delaydeck::kDefaultIngestListen));
 	const QStringList parts = endpoint.split(QLatin1Char(':'));
 	if (parts.size() != 2) {
 		return false;

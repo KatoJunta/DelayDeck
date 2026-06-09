@@ -38,6 +38,8 @@ public:
 		return last_preflight_result_;
 	}
 
+	void syncManagedRelayStartup();
+
 private:
 	static QString engineStatusText(RelayLinkState linkState,
 					RelayProcessState processState);
@@ -50,6 +52,7 @@ private:
 						bool startWithDelay);
 	bool canEditDelayTarget() const;
 	bool canOperateDelayToggle() const;
+	bool hadActiveDelayBuffer() const;
 
 	void applyHealth(const RelayHealth &health);
 	void applyStatus(const RelayStatus &status);
@@ -77,6 +80,9 @@ private:
 	void onEnableSlateSceneChanged();
 	void onReturnSlateSceneChanged();
 	void scheduleSettingsSave();
+	void openSetupDialog();
+	void maybePromptSetup();
+	void notifyObsStopDiscardedDelay();
 	void applyDockSettings(int targetDelaySeconds, bool delayStream,
 			       bool advancedVisible,
 			       const QString &enableSlateScene,
@@ -97,6 +103,7 @@ private:
 	QCheckBox *delay_toggle_;
 	QPushButton *dump_buffer_button_;
 	QPushButton *restart_relay_button_;
+	QPushButton *setup_destination_button_;
 
 	SlateSceneController slate_scene_controller_;
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
@@ -108,6 +115,7 @@ private:
 	bool start_with_delay_ = false;
 	bool auto_delay_triggered_ = false;
 	bool loading_settings_ = false;
+	bool setup_prompt_shown_ = false;
 	QTimer settings_save_timer_;
 	PreflightResult last_preflight_result_{true, PreflightFailureCode::None, {}};
 };

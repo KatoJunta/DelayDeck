@@ -14,10 +14,15 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $dllSrc = Join-Path $repoRoot "apps\obs-plugin\build\RelWithDebInfo\delaydeck.dll"
+$relaySrc = Join-Path $repoRoot "apps\relay-engine\delaydeck-relay.exe"
 $localeSrc = Join-Path $repoRoot "apps\obs-plugin\data\locale\en-US.ini"
 
 if (-not (Test-Path $dllSrc)) {
     Write-Error "Plugin DLL not found. Build first: .\scripts\dev\build-obs-plugin.ps1 -ObsStudioDir <path>"
+}
+
+if (-not (Test-Path $relaySrc)) {
+    Write-Error "Relay binary not found. Build first: pushd apps\relay-engine; go build -o delaydeck-relay.exe ./cmd/delaydeck-relay; popd"
 }
 
 if (-not (Test-Path $localeSrc)) {
@@ -30,10 +35,12 @@ $localeDest = Join-Path $ObsPrefix "data\obs-plugins\delaydeck\locale"
 New-Item -ItemType Directory -Force -Path $pluginDest, $localeDest | Out-Null
 
 Copy-Item $dllSrc (Join-Path $pluginDest "delaydeck.dll") -Force
+Copy-Item $relaySrc (Join-Path $pluginDest "delaydeck-relay.exe") -Force
 Copy-Item (Join-Path $repoRoot "apps\obs-plugin\data\locale\ja-JP.ini") (Join-Path $localeDest "ja-JP.ini") -Force
 Copy-Item $localeSrc (Join-Path $localeDest "en-US.ini") -Force
 
 Write-Host "Installed DLL:    $(Join-Path $pluginDest 'delaydeck.dll')"
+Write-Host "Installed relay:  $(Join-Path $pluginDest 'delaydeck-relay.exe')"
 Write-Host "Installed locale: $(Join-Path $localeDest 'ja-JP.ini')"
 Write-Host "Installed locale: $(Join-Path $localeDest 'en-US.ini')"
 Write-Host "Restart OBS after installing."

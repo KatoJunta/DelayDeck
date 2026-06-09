@@ -1,5 +1,7 @@
 #include "relay-process.hpp"
 
+#include "config/relay-settings.hpp"
+
 #include <QDir>
 #include <QFileInfo>
 #include <QProcessEnvironment>
@@ -116,30 +118,34 @@ void RelayProcess::startRelay()
 	emit credentialsReady(api_base_url_, session_token_);
 
 	process_.setProgram(relay_binary_);
-	const QString ingest_listen =
-		envOrDefault("DELAYDECK_INGEST_LISTEN",
-			     QStringLiteral("127.0.0.1:9401"));
+	const QString ingest_listen = envOrDefault(
+		"DELAYDECK_INGEST_LISTEN",
+		QString::fromUtf8(delaydeck::kDefaultIngestListen));
 	const QString relay_mode =
-		envOrDefault("DELAYDECK_RELAY_MODE", QStringLiteral("mock"))
-			.toLower();
+		delaydeck::RelaySettings::instance().resolvedRelayMode();
+
+	if (relay_mode.isEmpty()) {
+		last_error_ = QStringLiteral(
+			"relay destination is not configured; open DelayDeck setup");
+		setState(RelayProcessState::FailedToStart);
+		return;
+	}
 
 	QStringList args{QStringLiteral("--listen"), listen_address_,
 			 QStringLiteral("--ingest-listen"), ingest_listen,
 			 QStringLiteral("--mode"), relay_mode};
 
 	if (relay_mode == QStringLiteral("forwarding")) {
-		const QString output_url =
-			envOrDefault("DELAYDECK_OUTPUT_URL", QString());
-		const QString output_stream_key =
-			envOrDefault("DELAYDECK_OUTPUT_STREAM_KEY", QString());
-		if (output_url.isEmpty() || output_stream_key.isEmpty()) {
+		const delaydeck::RelayDestination dest =
+			delaydeck::RelaySettings::instance().destination();
+		if (!dest.isComplete()) {
 			last_error_ = QStringLiteral(
-				"forwarding mode requires DELAYDECK_OUTPUT_URL and DELAYDECK_OUTPUT_STREAM_KEY");
+				"relay destination is not configured; open DelayDeck setup");
 			setState(RelayProcessState::FailedToStart);
 			return;
 		}
-		args << QStringLiteral("--output-url") << output_url
-		     << QStringLiteral("--output-stream-key") << output_stream_key;
+		args << QStringLiteral("--output-url") << dest.outputUrl
+		     << QStringLiteral("--output-stream-key") << dest.streamKey;
 
 		const QString fixed_delay =
 			envOrDefault("DELAYDECK_FIXED_DELAY_SECONDS", QString());
@@ -147,8 +153,13 @@ void RelayProcess::startRelay()
 			args << QStringLiteral("--fixed-delay-seconds")
 			     << fixed_delay;
 		}
-	} else {
+	} else if (relay_mode == QStringLiteral("mock")) {
 		args << QStringLiteral("--mock-auto-connect");
+	} else {
+		last_error_ =
+			QStringLiteral("unsupported relay mode: %1").arg(relay_mode);
+		setState(RelayProcessState::FailedToStart);
+		return;
 	}
 
 	process_.setArguments(args);

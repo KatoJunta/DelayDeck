@@ -22,10 +22,20 @@ set(PLUGIN_SOURCES
     src/plugin-main.cpp
     src/config/dock-settings.cpp
     src/config/dock-settings.hpp
+    src/config/credential-store-win.cpp
+    src/config/credential-store.hpp
+    src/config/relay-destination-url.cpp
+    src/config/relay-destination-url.hpp
+    src/config/relay-settings.cpp
+    src/config/relay-settings.hpp
+    src/config/setup-dialog.cpp
+    src/config/setup-dialog.hpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
     src/obs/slate-scene-controller.cpp
     src/obs/slate-scene-controller.hpp
+    src/obs/streaming-setup.cpp
+    src/obs/streaming-setup.hpp
     src/relay/relay-client.cpp
     src/relay/relay-client.hpp
     src/relay/relay-process.cpp
@@ -62,6 +72,7 @@ set_target_properties(delaydeck PROPERTIES
 if(WIN32)
   set(OBS_PLUGIN_DEST "obs-plugins/64bit")
   set(OBS_DATA_DEST "data/obs-plugins/delaydeck")
+  target_link_libraries(delaydeck PRIVATE advapi32 crypt32)
 else()
   set(OBS_PLUGIN_DEST "lib/obs-plugins")
   set(OBS_DATA_DEST "share/obs/obs-plugins/delaydeck")
