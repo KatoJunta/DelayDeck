@@ -15,7 +15,7 @@ namespace {
 
 QLabel *makeValueLabel(QWidget *parent)
 {
-	auto *label = new QLabel(tr("Value.Dash"), parent);
+	auto *label = new QLabel(delaydeck::tr("Value.Dash"), parent);
 	label->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	return label;
 }
@@ -28,24 +28,24 @@ QString DelayDeckDock::engineStatusText(RelayLinkState linkState,
 	if (processState != RelayProcessState::Unmanaged) {
 		switch (processState) {
 		case RelayProcessState::Starting:
-			return tr("Engine.Starting");
+			return delaydeck::tr("Engine.Starting");
 		case RelayProcessState::Stopping:
-			return tr("Engine.Stopping");
+			return delaydeck::tr("Engine.Stopping");
 		case RelayProcessState::FailedToStart:
-			return tr("Engine.ProcessFailed");
+			return delaydeck::tr("Engine.ProcessFailed");
 		case RelayProcessState::Crashed:
-			return tr("Engine.ProcessCrashed");
+			return delaydeck::tr("Engine.ProcessCrashed");
 		case RelayProcessState::Running:
 			if (linkState == RelayLinkState::Connected) {
-				return tr("Engine.Connected");
+				return delaydeck::tr("Engine.Connected");
 			}
 			if (linkState == RelayLinkState::Unhealthy) {
-				return tr("Engine.Unhealthy");
+				return delaydeck::tr("Engine.Unhealthy");
 			}
 			if (linkState == RelayLinkState::AuthFailed) {
-				return tr("Engine.AuthFailed");
+				return delaydeck::tr("Engine.AuthFailed");
 			}
-			return tr("Engine.Disconnected");
+			return delaydeck::tr("Engine.Disconnected");
 		default:
 			break;
 		}
@@ -53,26 +53,26 @@ QString DelayDeckDock::engineStatusText(RelayLinkState linkState,
 
 	switch (linkState) {
 	case RelayLinkState::Disconnected:
-		return tr("Engine.Disconnected");
+		return delaydeck::tr("Engine.Disconnected");
 	case RelayLinkState::Unhealthy:
-		return tr("Engine.Unhealthy");
+		return delaydeck::tr("Engine.Unhealthy");
 	case RelayLinkState::AuthFailed:
-		return tr("Engine.AuthFailed");
+		return delaydeck::tr("Engine.AuthFailed");
 	case RelayLinkState::NoToken:
-		return tr("Engine.NoToken");
+		return delaydeck::tr("Engine.NoToken");
 	case RelayLinkState::Connected:
-		return tr("Engine.Connected");
+		return delaydeck::tr("Engine.Connected");
 	}
-	return tr("Engine.Disconnected");
+	return delaydeck::tr("Engine.Disconnected");
 }
 
 QString DelayDeckDock::operationLabel(const QString &operation)
 {
 	if (operation == QStringLiteral("health")) {
-		return tr("Operation.Health");
+		return delaydeck::tr("Operation.Health");
 	}
 	if (operation == QStringLiteral("status")) {
-		return tr("Operation.Status");
+		return delaydeck::tr("Operation.Status");
 	}
 	return operation;
 }
@@ -103,22 +103,22 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		status_grid->addWidget(*value_out, row, 1);
 	};
 
-	addRow(0, tr("Label.ProcessId"), &process_id_label_);
-	addRow(1, tr("Label.Health"), &health_label_);
-	addRow(2, tr("Label.State"), &state_label_);
-	addRow(3, tr("Label.TargetDelay"), &target_delay_label_);
-	addRow(4, tr("Label.ActiveDelay"), &active_delay_label_);
-	addRow(5, tr("Label.Buffer"), &buffer_label_);
-	addRow(6, tr("Label.Input"), &input_label_);
-	addRow(7, tr("Label.Output"), &output_label_);
-	addRow(8, tr("Label.Slate"), &slate_label_);
-	addRow(9, tr("Label.Countdown"), &countdown_label_);
-	addRow(10, tr("Label.LastError"), &last_error_label_);
+	addRow(0, delaydeck::tr("Label.ProcessId"), &process_id_label_);
+	addRow(1, delaydeck::tr("Label.Health"), &health_label_);
+	addRow(2, delaydeck::tr("Label.State"), &state_label_);
+	addRow(3, delaydeck::tr("Label.TargetDelay"), &target_delay_label_);
+	addRow(4, delaydeck::tr("Label.ActiveDelay"), &active_delay_label_);
+	addRow(5, delaydeck::tr("Label.Buffer"), &buffer_label_);
+	addRow(6, delaydeck::tr("Label.Input"), &input_label_);
+	addRow(7, delaydeck::tr("Label.Output"), &output_label_);
+	addRow(8, delaydeck::tr("Label.Slate"), &slate_label_);
+	addRow(9, delaydeck::tr("Label.Countdown"), &countdown_label_);
+	addRow(10, delaydeck::tr("Label.LastError"), &last_error_label_);
 
 	layout->addLayout(status_grid);
 
 	auto *delay_row = new QHBoxLayout();
-	delay_row->addWidget(new QLabel(tr("Label.EnableDelaySeconds"), this));
+	delay_row->addWidget(new QLabel(delaydeck::tr("Label.EnableDelaySeconds"), this));
 	target_delay_spin_ = new QSpinBox(this);
 	target_delay_spin_->setRange(1, 600);
 	target_delay_spin_->setValue(30);
@@ -127,10 +127,10 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	layout->addLayout(delay_row);
 
 	auto *button_row = new QHBoxLayout();
-	enable_delay_button_ = new QPushButton(tr("Button.EnableDelay"), this);
-	return_live_button_ = new QPushButton(tr("Button.ReturnLive"), this);
-	dump_buffer_button_ = new QPushButton(tr("Button.DumpBuffer"), this);
-	restart_relay_button_ = new QPushButton(tr("Button.RestartRelay"), this);
+	enable_delay_button_ = new QPushButton(delaydeck::tr("Button.EnableDelay"), this);
+	return_live_button_ = new QPushButton(delaydeck::tr("Button.ReturnLive"), this);
+	dump_buffer_button_ = new QPushButton(delaydeck::tr("Button.DumpBuffer"), this);
+	restart_relay_button_ = new QPushButton(delaydeck::tr("Button.RestartRelay"), this);
 
 	button_row->addWidget(enable_delay_button_);
 	button_row->addWidget(return_live_button_);
@@ -144,7 +144,7 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	request_error_label_->hide();
 	layout->addWidget(request_error_label_);
 
-	preflight_label_ = new QLabel(tr("Preflight.Ready"), this);
+	preflight_label_ = new QLabel(delaydeck::tr("Preflight.Ready"), this);
 	preflight_label_->setWordWrap(true);
 	layout->addWidget(preflight_label_);
 
@@ -181,7 +181,7 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	connect(restart_relay_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onRestartRelayClicked);
 
-	process_id_label_->setText(tr("Value.Dash"));
+	process_id_label_->setText(delaydeck::tr("Value.Dash"));
 	updateButtonStates();
 
 	if (relay_process_->isManaged()) {
@@ -218,13 +218,13 @@ void DelayDeckDock::setLastPreflightResult(const PreflightResult &result)
 void DelayDeckDock::updatePreflightDisplay(const PreflightResult &result)
 {
 	if (result.ok) {
-		preflight_label_->setText(tr("Preflight.Ready"));
+		preflight_label_->setText(delaydeck::tr("Preflight.Ready"));
 		preflight_label_->setStyleSheet(QString());
 		return;
 	}
 
 	preflight_label_->setText(
-		tr("Preflight.Failed").arg(PreflightDialog::messageFor(result)));
+		delaydeck::tr("Preflight.Failed").arg(PreflightDialog::messageFor(result)));
 	preflight_label_->setStyleSheet(QStringLiteral("color: #c0392b;"));
 }
 
@@ -236,8 +236,8 @@ DelayDeckDock::~DelayDeckDock()
 void DelayDeckDock::applyHealth(const RelayHealth &health)
 {
 	const QString healthText =
-		health.healthy ? tr("Value.Healthy") : tr("Value.Unhealthy");
-	health_label_->setText(tr("Health.Format")
+		health.healthy ? delaydeck::tr("Value.Healthy") : delaydeck::tr("Value.Unhealthy");
+	health_label_->setText(delaydeck::tr("Health.Format")
 				       .arg(healthText)
 				       .arg(health.mode)
 				       .arg(health.version)
@@ -248,31 +248,31 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 {
 	relay_state_ = status.state;
 	state_label_->setText(status.transitionPending
-				      ? tr("Status.TransitionPending").arg(status.state)
+				      ? delaydeck::tr("Status.TransitionPending").arg(status.state)
 				      : status.state);
 	target_delay_label_->setText(
-		tr("Value.Seconds").arg(status.targetDelaySeconds));
+		delaydeck::tr("Value.Seconds").arg(status.targetDelaySeconds));
 	active_delay_label_->setText(
-		tr("Value.Seconds").arg(status.activeDelaySeconds));
+		delaydeck::tr("Value.Seconds").arg(status.activeDelaySeconds));
 	buffer_label_->setText(
-		tr("Value.Percent").arg(status.bufferUsagePercent, 0, 'f', 1));
+		delaydeck::tr("Value.Percent").arg(status.bufferUsagePercent, 0, 'f', 1));
 	input_label_->setText(status.inputState);
 	output_label_->setText(status.outputState);
 
 	if (status.slateMessage.isEmpty()) {
-		slate_label_->setText(tr("Value.None"));
+		slate_label_->setText(delaydeck::tr("Value.None"));
 	} else {
 		slate_label_->setText(status.slateMessage);
 	}
 	if (status.countdownSeconds > 0) {
 		countdown_label_->setText(
-			tr("Value.Seconds").arg(status.countdownSeconds));
+			delaydeck::tr("Value.Seconds").arg(status.countdownSeconds));
 	} else {
-		countdown_label_->setText(tr("Value.Dash"));
+		countdown_label_->setText(delaydeck::tr("Value.Dash"));
 	}
 
 	if (status.lastError.isEmpty()) {
-		last_error_label_->setText(tr("Value.None"));
+		last_error_label_->setText(delaydeck::tr("Value.None"));
 	} else {
 		last_error_label_->setText(status.lastError);
 	}
@@ -302,7 +302,7 @@ void DelayDeckDock::applyProcessState(RelayProcessState state)
 		relay_client_->suspendTraffic();
 		if (!relay_process_->lastError().isEmpty()) {
 			request_error_label_->setText(
-				tr("Error.RelayProcess").arg(
+				delaydeck::tr("Error.RelayProcess").arg(
 					relay_process_->lastError()));
 			request_error_label_->show();
 		}
@@ -321,19 +321,19 @@ void DelayDeckDock::applyLinkState(RelayLinkState state)
 
 	if (state != RelayLinkState::Connected &&
 	    state != RelayLinkState::Unhealthy) {
-		health_label_->setText(tr("Value.Dash"));
+		health_label_->setText(delaydeck::tr("Value.Dash"));
 	}
 
 	if (state != RelayLinkState::Connected) {
-		state_label_->setText(tr("Value.Dash"));
-		target_delay_label_->setText(tr("Value.Dash"));
-		active_delay_label_->setText(tr("Value.Dash"));
-		buffer_label_->setText(tr("Value.Dash"));
-		input_label_->setText(tr("Value.Dash"));
-		output_label_->setText(tr("Value.Dash"));
-		slate_label_->setText(tr("Value.Dash"));
-		countdown_label_->setText(tr("Value.Dash"));
-		last_error_label_->setText(tr("Value.Dash"));
+		state_label_->setText(delaydeck::tr("Value.Dash"));
+		target_delay_label_->setText(delaydeck::tr("Value.Dash"));
+		active_delay_label_->setText(delaydeck::tr("Value.Dash"));
+		buffer_label_->setText(delaydeck::tr("Value.Dash"));
+		input_label_->setText(delaydeck::tr("Value.Dash"));
+		output_label_->setText(delaydeck::tr("Value.Dash"));
+		slate_label_->setText(delaydeck::tr("Value.Dash"));
+		countdown_label_->setText(delaydeck::tr("Value.Dash"));
+		last_error_label_->setText(delaydeck::tr("Value.Dash"));
 		relay_state_.clear();
 	}
 
@@ -349,7 +349,7 @@ void DelayDeckDock::applyControlFailed(const QString &code,
 	}
 
 	request_error_label_->setText(
-		tr("Error.ControlFailed").arg(code, detail));
+		delaydeck::tr("Error.ControlFailed").arg(code, detail));
 	request_error_label_->show();
 }
 
@@ -362,7 +362,7 @@ void DelayDeckDock::applyRequestFailed(const QString &operation,
 	}
 
 	request_error_label_->setText(
-		tr("Error.RequestFailed").arg(operationLabel(operation), detail));
+		delaydeck::tr("Error.RequestFailed").arg(operationLabel(operation), detail));
 	request_error_label_->show();
 }
 
@@ -372,7 +372,7 @@ void DelayDeckDock::updateProcessDisplay()
 		engineStatusText(link_state_, process_state_));
 
 	if (!relay_process_->isManaged()) {
-		process_id_label_->setText(tr("Value.Unmanaged"));
+		process_id_label_->setText(delaydeck::tr("Value.Unmanaged"));
 		return;
 	}
 
@@ -380,7 +380,7 @@ void DelayDeckDock::updateProcessDisplay()
 	if (pid > 0) {
 		process_id_label_->setText(QString::number(pid));
 	} else {
-		process_id_label_->setText(tr("Value.Dash"));
+		process_id_label_->setText(delaydeck::tr("Value.Dash"));
 	}
 }
 
@@ -426,7 +426,7 @@ void DelayDeckDock::onReturnLiveClicked()
 void DelayDeckDock::onDumpBufferClicked()
 {
 	const auto answer = QMessageBox::question(
-		this, tr("DumpBuffer.Title"), tr("DumpBuffer.Message"),
+		this, delaydeck::tr("DumpBuffer.Title"), delaydeck::tr("DumpBuffer.Message"),
 		QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
 	if (answer != QMessageBox::Yes) {
 		return;

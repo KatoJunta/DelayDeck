@@ -20,7 +20,7 @@ const testToken = "test-session-token"
 func newTestServer(t *testing.T) (*api.Server, *state.Machine) {
 	t.Helper()
 	machine := state.NewMachine(512*1024*1024, 0)
-	server := api.NewServer(machine, testToken)
+	server := api.NewServer(machine, testToken, "mock")
 
 	must(t, machine.Start())
 	must(t, machine.MarkReady())
@@ -102,7 +102,7 @@ func TestStatusEndpoint(t *testing.T) {
 
 func TestEnableDelayConflictFromReady(t *testing.T) {
 	machine := state.NewMachine(512*1024*1024, 0)
-	server := api.NewServer(machine, testToken)
+	server := api.NewServer(machine, testToken, "mock")
 	must(t, machine.Start())
 	must(t, machine.MarkReady())
 

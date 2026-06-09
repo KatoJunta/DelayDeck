@@ -40,17 +40,19 @@ type ControlResponse struct {
 type Server struct {
 	machine      *state.Machine
 	sessionToken string
+	runMode      string
 	startedAt    time.Time
 	eventHub     *EventHub
 }
 
-func NewServer(machine *state.Machine, sessionToken string) *Server {
+func NewServer(machine *state.Machine, sessionToken string, runMode string) *Server {
 	hub := NewEventHub()
 	machine.OnChange(hub.Publish)
 
 	return &Server{
 		machine:      machine,
 		sessionToken: sessionToken,
+		runMode:      runMode,
 		startedAt:    time.Now().UTC(),
 		eventHub:     hub,
 	}
@@ -99,10 +101,15 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	current := s.machine.CurrentState()
 	healthy := current != state.Error && current != state.Stopped
 
+	mode := s.runMode
+	if mode == "" {
+		mode = "mock"
+	}
+
 	writeJSON(w, http.StatusOK, HealthResponse{
 		Healthy: healthy,
 		Version: version.Version,
-		Mode:    "mock",
+		Mode:    mode,
 		Uptime:  formatUptime(time.Since(s.startedAt)),
 	})
 }

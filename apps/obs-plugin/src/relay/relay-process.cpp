@@ -119,10 +119,32 @@ void RelayProcess::startRelay()
 	const QString ingest_listen =
 		envOrDefault("DELAYDECK_INGEST_LISTEN",
 			     QStringLiteral("127.0.0.1:9401"));
+	const QString relay_mode =
+		envOrDefault("DELAYDECK_RELAY_MODE", QStringLiteral("mock"))
+			.toLower();
 
-	process_.setArguments({QStringLiteral("--listen"), listen_address_,
-			       QStringLiteral("--ingest-listen"), ingest_listen,
-			       QStringLiteral("--mock-auto-connect")});
+	QStringList args{QStringLiteral("--listen"), listen_address_,
+			 QStringLiteral("--ingest-listen"), ingest_listen,
+			 QStringLiteral("--mode"), relay_mode};
+
+	if (relay_mode == QStringLiteral("forwarding")) {
+		const QString output_url =
+			envOrDefault("DELAYDECK_OUTPUT_URL", QString());
+		const QString output_stream_key =
+			envOrDefault("DELAYDECK_OUTPUT_STREAM_KEY", QString());
+		if (output_url.isEmpty() || output_stream_key.isEmpty()) {
+			last_error_ = QStringLiteral(
+				"forwarding mode requires DELAYDECK_OUTPUT_URL and DELAYDECK_OUTPUT_STREAM_KEY");
+			setState(RelayProcessState::FailedToStart);
+			return;
+		}
+		args << QStringLiteral("--output-url") << output_url
+		     << QStringLiteral("--output-stream-key") << output_stream_key;
+	} else {
+		args << QStringLiteral("--mock-auto-connect");
+	}
+
+	process_.setArguments(args);
 
 	QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
 	env.insert(QStringLiteral("DELAYDECK_SESSION_TOKEN"), session_token_);

@@ -271,3 +271,31 @@ func errorsAs(err error, target **state.TransitionError) bool {
 	*target = transition
 	return true
 }
+
+func TestDisconnectSessionFromRealtime(t *testing.T) {
+	m := newTestMachine()
+	bootToRealtime(t, m)
+
+	mustApply(t, m.DisconnectSession())
+	if m.CurrentState() != state.Ready {
+		t.Fatalf("expected READY, got %s", m.CurrentState())
+	}
+
+	snap := m.Snapshot()
+	if snap.InputConnected || snap.OutputConnected {
+		t.Fatalf("expected disconnected flags, got input=%v output=%v",
+			snap.InputConnected, snap.OutputConnected)
+	}
+}
+
+func TestReconnectAfterDisconnectSession(t *testing.T) {
+	m := newTestMachine()
+	bootToRealtime(t, m)
+	mustApply(t, m.DisconnectSession())
+
+	mustApply(t, m.ConnectInput())
+	mustApply(t, m.ConnectOutput())
+	if m.CurrentState() != state.Realtime {
+		t.Fatalf("expected REALTIME after reconnect, got %s", m.CurrentState())
+	}
+}

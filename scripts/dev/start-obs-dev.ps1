@@ -67,6 +67,19 @@ if ($ManagedRelay) {
     Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
     Write-Host "DELAYDECK_INGEST_LISTEN = 127.0.0.1:9401"
     $env:DELAYDECK_INGEST_LISTEN = "127.0.0.1:9401"
+
+    if ($env:DELAYDECK_RELAY_MODE -eq "forwarding") {
+        if (-not $env:DELAYDECK_OUTPUT_URL -or -not $env:DELAYDECK_OUTPUT_STREAM_KEY) {
+            Write-Warning "DELAYDECK_RELAY_MODE=forwarding requires DELAYDECK_OUTPUT_URL and DELAYDECK_OUTPUT_STREAM_KEY"
+        } else {
+            Write-Host "DELAYDECK_RELAY_MODE        = forwarding"
+            Write-Host "DELAYDECK_OUTPUT_URL        = $($env:DELAYDECK_OUTPUT_URL)"
+            Write-Host "DELAYDECK_OUTPUT_STREAM_KEY = (set)"
+        }
+    } else {
+        $env:DELAYDECK_RELAY_MODE = "mock"
+        Write-Host "DELAYDECK_RELAY_MODE        = mock"
+    }
 } else {
     $env:DELAYDECK_MANAGED_RELAY = "0"
     $env:DELAYDECK_SESSION_TOKEN = $SessionToken
@@ -78,6 +91,13 @@ if ($ManagedRelay) {
     Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
     Write-Host "DELAYDECK_INGEST_LISTEN = 127.0.0.1:9401"
     $env:DELAYDECK_INGEST_LISTEN = "127.0.0.1:9401"
+
+    if ($env:DELAYDECK_RELAY_MODE -eq "forwarding") {
+        Write-Host "DELAYDECK_RELAY_MODE        = forwarding"
+    } else {
+        $env:DELAYDECK_RELAY_MODE = "mock"
+        Write-Host "DELAYDECK_RELAY_MODE        = mock"
+    }
 }
 
 $obsDir = Split-Path -Parent $ObsExe

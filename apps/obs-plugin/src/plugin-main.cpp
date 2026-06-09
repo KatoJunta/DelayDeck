@@ -15,15 +15,11 @@ DelayDeckDock *g_dock = nullptr;
 
 bool obs_module_load(void)
 {
-	obs_frontend_push_ui_translation(obs_module_get_string);
-
 	const auto main_window =
 		static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	g_dock = new DelayDeckDock(main_window);
 	const bool added = obs_frontend_add_dock_by_id(
 		kDockId, obs_module_text("DelayDeck"), g_dock);
-
-	obs_frontend_pop_ui_translation();
 
 	if (!added) {
 		delete g_dock;

@@ -97,12 +97,31 @@ func (m *Machine) MarkReady() error {
 	return m.apply(Ready, "api_ready")
 }
 
-func (m *Machine) MockConnectInput() error {
+func (m *Machine) ConnectInput() error {
 	return m.apply(Ingesting, "input_connected")
 }
 
-func (m *Machine) MockConnectOutput() error {
+func (m *Machine) ConnectOutput() error {
 	return m.apply(Realtime, "output_connected")
+}
+
+func (m *Machine) DisconnectSession() error {
+	switch m.CurrentState() {
+	case Ready:
+		return nil
+	case Ingesting, Realtime:
+		return m.apply(Ready, "session_stopped")
+	default:
+		return &TransitionError{From: m.CurrentState(), Trigger: "session_stopped"}
+	}
+}
+
+func (m *Machine) MockConnectInput() error {
+	return m.ConnectInput()
+}
+
+func (m *Machine) MockConnectOutput() error {
+	return m.ConnectOutput()
 }
 
 func (m *Machine) MarkError(message string) error {
@@ -254,6 +273,8 @@ func canTransition(from, to State, trigger string) bool {
 		return from == Ready && to == Ingesting
 	case "output_connected":
 		return from == Ingesting && to == Realtime
+	case "session_stopped":
+		return (from == Ingesting || from == Realtime) && to == Ready
 	case "enable_delay":
 		return from == Realtime && to == BufferingToDelay
 	case "buffering_show_safe_slate":
