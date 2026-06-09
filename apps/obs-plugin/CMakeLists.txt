@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(delaydeck-plugin VERSION 0.1.0 LANGUAGES C CXX)
+set(DELAYDECK_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../VERSION")
+if(NOT EXISTS "${DELAYDECK_VERSION_FILE}")
+  message(FATAL_ERROR "VERSION file not found: ${DELAYDECK_VERSION_FILE}")
+endif()
+
+file(READ "${DELAYDECK_VERSION_FILE}" DELAYDECK_VERSION_RAW)
+string(STRIP "${DELAYDECK_VERSION_RAW}" DELAYDECK_VERSION)
+if(NOT DELAYDECK_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+  message(FATAL_ERROR "VERSION must be major.minor.patch, got: ${DELAYDECK_VERSION}")
+endif()
+
+project(delaydeck-plugin VERSION ${DELAYDECK_VERSION} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,9 +63,17 @@ set(PLUGIN_SOURCES
     src/preflight/streaming-guard.hpp
 )
 
+set(DELAYDECK_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${DELAYDECK_GENERATED_INCLUDE_DIR}")
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/version.hpp.in"
+  "${DELAYDECK_GENERATED_INCLUDE_DIR}/version.hpp"
+  @ONLY
+)
+
 add_library(delaydeck MODULE ${PLUGIN_SOURCES})
 
-target_include_directories(delaydeck PRIVATE src)
+target_include_directories(delaydeck PRIVATE src "${DELAYDECK_GENERATED_INCLUDE_DIR}")
 
 target_link_libraries(delaydeck PRIVATE
     OBS::libobs

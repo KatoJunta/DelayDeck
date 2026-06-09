@@ -1,0 +1,3 @@
+#pragma once
+
+#define DELAYDECK_PLUGIN_VERSION "@DELAYDECK_VERSION@"

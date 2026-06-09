@@ -24,6 +24,7 @@ if (-not (Test-Path $dllSrc)) {
 
 if (-not (Test-Path $relaySrc)) {
     Write-Host "Building delaydeck-relay: $relaySrc"
+    & (Join-Path $repoRoot "scripts\dev\sync-version.ps1")
     Push-Location $relayDir
     try {
         go build -o $relaySrc ./cmd/delaydeck-relay

@@ -8,7 +8,7 @@ on:
         required: true
         default: "master"
       version:
-        description: "Release tag (example: v0.1.0). Required when publishing a release."
+        description: "Release tag (example: v0.1.0). Empty uses VERSION file."
         required: false
         default: ""
       publish_release:
@@ -38,17 +38,25 @@ jobs:
       INPUT_PUBLISH_RELEASE: ${{ github.event.inputs.publish_release || 'false' }}
 
     steps:
+      - name: Checkout DelayDeck
+        uses: actions/checkout@v4
+
+      - name: Sync version metadata
+        run: .\scripts\dev\sync-version.ps1
+
       - name: Validate release inputs
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
         run: |
-          $version = $env:INPUT_VERSION.Trim()
-          if (-not $version) {
-            Write-Error "version is required when publish_release is enabled (example: v0.1.0)"
-            exit 1
+          $inputVersion = $env:INPUT_VERSION.Trim()
+          if ($inputVersion) {
+            exit 0
           }
 
-      - name: Checkout DelayDeck
-        uses: actions/checkout@v4
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "Set version input or fix VERSION file (major.minor.patch)"
+            exit 1
+          }
 
       - name: Checkout OBS Studio
         uses: actions/checkout@v4
@@ -118,7 +126,11 @@ jobs:
             $version = $env:GITHUB_REF_NAME
             $releaseTag = $version
           } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and $env:INPUT_PUBLISH_RELEASE -eq "true") {
-            $version = Normalize-VersionTag $env:INPUT_VERSION
+            $rawVersion = $env:INPUT_VERSION.Trim()
+            if (-not $rawVersion) {
+              $rawVersion = (Get-Content (Join-Path $env:GITHUB_WORKSPACE "VERSION") -Raw).Trim()
+            }
+            $version = Normalize-VersionTag $rawVersion
             $releaseTag = $version
           } else {
             $shortSha = $env:GITHUB_SHA.Substring(0, 7)
