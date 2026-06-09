@@ -14,6 +14,7 @@ import (
 
 	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/api"
 	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/config"
+	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/ingest"
 	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
 )
 
@@ -43,6 +44,13 @@ func run(args []string) int {
 		return 1
 	}
 
+	ingestListener, err := ingest.StartMockListener(cfg.IngestListenAddress)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "delaydeck-relay: ingest listener: %v\n", err)
+		return 1
+	}
+	defer ingestListener.Close()
+
 	if cfg.MockAutoConnect {
 		go mockConnect(machine)
 	}
@@ -55,7 +63,8 @@ func run(args []string) int {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("delaydeck-relay listening on %s (mock mode)", cfg.ListenAddress)
+		log.Printf("delaydeck-relay listening on %s (mock mode, ingest %s)",
+			cfg.ListenAddress, ingestListener.Address())
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}

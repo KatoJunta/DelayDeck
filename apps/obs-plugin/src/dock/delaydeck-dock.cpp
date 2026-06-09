@@ -1,6 +1,9 @@
 #include "delaydeck-dock.hpp"
 
 #include "locale/tr.hpp"
+#include "preflight/preflight-checker.hpp"
+#include "preflight/preflight-dialog.hpp"
+#include "preflight/streaming-guard.hpp"
 #include "relay/relay-client.hpp"
 
 #include <QGridLayout>
@@ -141,6 +144,10 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	request_error_label_->hide();
 	layout->addWidget(request_error_label_);
 
+	preflight_label_ = new QLabel(tr("Preflight.Ready"), this);
+	preflight_label_->setWordWrap(true);
+	layout->addWidget(preflight_label_);
+
 	layout->addStretch();
 
 	connect(relay_process_, &RelayProcess::stateChanged, this,
@@ -184,12 +191,41 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		process_state_ = RelayProcessState::Unmanaged;
 		startRelayClient();
 	}
+
+	StreamingGuard::install(this);
 }
 
 void DelayDeckDock::shutdown()
 {
+	StreamingGuard::uninstall();
 	relay_client_->stop();
 	relay_process_->shutdown();
+}
+
+PreflightResult DelayDeckDock::runPreflight()
+{
+	return PreflightChecker::run(process_state_, relay_process_->isManaged(),
+				     relay_client_->apiBaseUrl(),
+				     relay_process_->sessionToken());
+}
+
+void DelayDeckDock::setLastPreflightResult(const PreflightResult &result)
+{
+	last_preflight_result_ = result;
+	updatePreflightDisplay(result);
+}
+
+void DelayDeckDock::updatePreflightDisplay(const PreflightResult &result)
+{
+	if (result.ok) {
+		preflight_label_->setText(tr("Preflight.Ready"));
+		preflight_label_->setStyleSheet(QString());
+		return;
+	}
+
+	preflight_label_->setText(
+		tr("Preflight.Failed").arg(PreflightDialog::messageFor(result)));
+	preflight_label_->setStyleSheet(QStringLiteral("color: #c0392b;"));
 }
 
 DelayDeckDock::~DelayDeckDock()
@@ -201,10 +237,11 @@ void DelayDeckDock::applyHealth(const RelayHealth &health)
 {
 	const QString healthText =
 		health.healthy ? tr("Value.Healthy") : tr("Value.Unhealthy");
-	health_label_->setText(
-		tr("Health.Format")
-			.arg(healthText, health.mode, health.version,
-			     health.uptimeSeconds));
+	health_label_->setText(tr("Health.Format")
+				       .arg(healthText)
+				       .arg(health.mode)
+				       .arg(health.version)
+				       .arg(health.uptimeSeconds));
 }
 
 void DelayDeckDock::applyStatus(const RelayStatus &status)

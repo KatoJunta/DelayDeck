@@ -48,15 +48,13 @@ if ($ManagedRelay) {
         $RelayBin = Join-Path $relayDir "delaydeck-relay.exe"
     }
 
-    if (-not (Test-Path $RelayBin)) {
-        Write-Host "Building delaydeck-relay: $RelayBin"
-        Push-Location $relayDir
-        try {
-            go build -o $RelayBin ./cmd/delaydeck-relay
-        }
-        finally {
-            Pop-Location
-        }
+    Write-Host "Building delaydeck-relay: $RelayBin"
+    Push-Location $relayDir
+    try {
+        go build -o $RelayBin ./cmd/delaydeck-relay
+    }
+    finally {
+        Pop-Location
     }
 
     $env:DELAYDECK_MANAGED_RELAY = "1"
@@ -67,6 +65,8 @@ if ($ManagedRelay) {
     Write-Host "DELAYDECK_MANAGED_RELAY = 1"
     Write-Host "DELAYDECK_RELAY_BIN     = $($env:DELAYDECK_RELAY_BIN)"
     Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
+    Write-Host "DELAYDECK_INGEST_LISTEN = 127.0.0.1:9401"
+    $env:DELAYDECK_INGEST_LISTEN = "127.0.0.1:9401"
 } else {
     $env:DELAYDECK_MANAGED_RELAY = "0"
     $env:DELAYDECK_SESSION_TOKEN = $SessionToken
@@ -76,6 +76,8 @@ if ($ManagedRelay) {
     Write-Host "DELAYDECK_MANAGED_RELAY = 0"
     Write-Host "DELAYDECK_SESSION_TOKEN = $SessionToken"
     Write-Host "DELAYDECK_RELAY_URL     = $RelayUrl"
+    Write-Host "DELAYDECK_INGEST_LISTEN = 127.0.0.1:9401"
+    $env:DELAYDECK_INGEST_LISTEN = "127.0.0.1:9401"
 }
 
 $obsDir = Split-Path -Parent $ObsExe

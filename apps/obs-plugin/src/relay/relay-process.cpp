@@ -116,7 +116,12 @@ void RelayProcess::startRelay()
 	emit credentialsReady(api_base_url_, session_token_);
 
 	process_.setProgram(relay_binary_);
+	const QString ingest_listen =
+		envOrDefault("DELAYDECK_INGEST_LISTEN",
+			     QStringLiteral("127.0.0.1:9401"));
+
 	process_.setArguments({QStringLiteral("--listen"), listen_address_,
+			       QStringLiteral("--ingest-listen"), ingest_listen,
 			       QStringLiteral("--mock-auto-connect")});
 
 	QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -203,6 +208,13 @@ void RelayProcess::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 		last_error_ = text.length() > lineLimit
 				      ? text.left(lineLimit) + QStringLiteral("…")
 				      : text;
+	}
+
+	if (last_error_.contains(
+		    QStringLiteral("flag provided but not defined"),
+		    Qt::CaseInsensitive)) {
+		last_error_ = QStringLiteral(
+			"delaydeck-relay binary is outdated; rebuild apps/relay-engine");
 	}
 
 	if (status == QProcess::CrashExit) {

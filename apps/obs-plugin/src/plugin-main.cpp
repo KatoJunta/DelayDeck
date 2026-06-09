@@ -6,9 +6,6 @@
 #include "dock/delaydeck-dock.hpp"
 #include "version.hpp"
 
-OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("delaydeck", "ja-JP")
-
 namespace {
 
 constexpr const char *kDockId = "DelayDeckDock";

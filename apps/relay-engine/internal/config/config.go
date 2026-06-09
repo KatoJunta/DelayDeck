@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	ListenAddress       string
+	IngestListenAddress string
 	SessionToken        string
 	MockAutoConnect     bool
 	TransitionDelay     time.Duration
@@ -19,6 +20,7 @@ func ParseFlags(args []string) (*Config, error) {
 	fs := flag.NewFlagSet("delaydeck-relay", flag.ContinueOnError)
 
 	listen := fs.String("listen", "127.0.0.1:9400", "HTTP listen address")
+	ingestListen := fs.String("ingest-listen", "127.0.0.1:9401", "mock ingest listen address")
 	token := fs.String("token", "", "session token (auto-generated when empty)")
 	mockAutoConnect := fs.Bool("mock-auto-connect", true, "auto-advance READY to REALTIME in mock mode")
 	transitionMS := fs.Int("transition-ms", 50, "mock transition delay in milliseconds")
@@ -49,6 +51,7 @@ func ParseFlags(args []string) (*Config, error) {
 
 	return &Config{
 		ListenAddress:       *listen,
+		IngestListenAddress: *ingestListen,
 		SessionToken:        sessionToken,
 		MockAutoConnect:     *mockAutoConnect,
 		TransitionDelay:     time.Duration(*transitionMS) * time.Millisecond,

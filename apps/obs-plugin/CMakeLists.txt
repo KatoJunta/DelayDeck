@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(delaydeck-plugin VERSION 0.1.0 LANGUAGES CXX)
+project(delaydeck-plugin VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,6 +18,7 @@ find_package(obs-frontend-api REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 set(PLUGIN_SOURCES
+    src/plugin-module.c
     src/plugin-main.cpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
@@ -28,6 +29,13 @@ set(PLUGIN_SOURCES
     src/relay/relay-event-socket.cpp
     src/relay/relay-event-socket.hpp
     src/relay/relay-types.hpp
+    src/preflight/preflight-checker.cpp
+    src/preflight/preflight-checker.hpp
+    src/preflight/preflight-dialog.cpp
+    src/preflight/preflight-dialog.hpp
+    src/preflight/preflight-result.hpp
+    src/preflight/streaming-guard.cpp
+    src/preflight/streaming-guard.hpp
 )
 
 add_library(delaydeck MODULE ${PLUGIN_SOURCES})

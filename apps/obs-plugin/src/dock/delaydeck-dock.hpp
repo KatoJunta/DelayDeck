@@ -1,5 +1,6 @@
 #pragma once
 
+#include "preflight/preflight-result.hpp"
 #include "relay/relay-client.hpp"
 #include "relay/relay-process.hpp"
 #include "relay/relay-types.hpp"
@@ -18,6 +19,13 @@ public:
 
 	void shutdown();
 
+	PreflightResult runPreflight();
+	void setLastPreflightResult(const PreflightResult &result);
+	const PreflightResult &lastPreflightResult() const
+	{
+		return last_preflight_result_;
+	}
+
 private:
 	static QString engineStatusText(RelayLinkState linkState,
 					RelayProcessState processState);
@@ -32,6 +40,7 @@ private:
 	void updateButtonStates();
 	void updateProcessDisplay();
 	void startRelayClient();
+	void updatePreflightDisplay(const PreflightResult &result);
 
 	void onEnableDelayClicked();
 	void onReturnLiveClicked();
@@ -54,6 +63,7 @@ private:
 	QLabel *countdown_label_;
 	QLabel *last_error_label_;
 	QLabel *request_error_label_;
+	QLabel *preflight_label_;
 
 	QSpinBox *target_delay_spin_;
 	QPushButton *enable_delay_button_;
@@ -64,4 +74,5 @@ private:
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
 	RelayProcessState process_state_ = RelayProcessState::Idle;
 	QString relay_state_;
+	PreflightResult last_preflight_result_;
 };
