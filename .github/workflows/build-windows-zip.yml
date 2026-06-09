@@ -25,7 +25,7 @@ permissions:
 jobs:
   build-windows-zip:
     name: Build Windows x64 package
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     defaults:
       run:
@@ -36,6 +36,7 @@ jobs:
       OBS_REF: ${{ github.event.inputs.obs_ref || 'master' }}
       INPUT_VERSION: ${{ github.event.inputs.version || '' }}
       INPUT_PUBLISH_RELEASE: ${{ github.event.inputs.publish_release || 'false' }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout DelayDeck
