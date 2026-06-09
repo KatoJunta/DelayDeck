@@ -7,12 +7,20 @@ on:
         description: "OBS Studio git ref to build against"
         required: true
         default: "master"
+      version:
+        description: "Release tag (example: v0.1.0). Required when publishing a release."
+        required: false
+        default: ""
+      publish_release:
+        description: "Publish to GitHub Release after a successful build"
+        type: boolean
+        default: false
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows-zip:
@@ -26,8 +34,19 @@ jobs:
     env:
       BUILD_TYPE: RelWithDebInfo
       OBS_REF: ${{ github.event.inputs.obs_ref || 'master' }}
+      INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+      INPUT_PUBLISH_RELEASE: ${{ github.event.inputs.publish_release || 'false' }}
 
     steps:
+      - name: Validate release inputs
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        run: |
+          $version = $env:INPUT_VERSION.Trim()
+          if (-not $version) {
+            Write-Error "version is required when publish_release is enabled (example: v0.1.0)"
+            exit 1
+          }
+
       - name: Checkout DelayDeck
         uses: actions/checkout@v4
 
@@ -84,6 +103,29 @@ jobs:
       - name: Stage OBS drag-and-drop package
         id: package
         run: |
+          function Normalize-VersionTag([string]$raw) {
+            $trimmed = $raw.Trim()
+            if ($trimmed -eq "") {
+              return ""
+            }
+            if ($trimmed.StartsWith("v")) {
+              return $trimmed
+            }
+            return "v$trimmed"
+          }
+
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME
+            $releaseTag = $version
+          } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and $env:INPUT_PUBLISH_RELEASE -eq "true") {
+            $version = Normalize-VersionTag $env:INPUT_VERSION
+            $releaseTag = $version
+          } else {
+            $shortSha = $env:GITHUB_SHA.Substring(0, 7)
+            $version = "dev-$shortSha"
+            $releaseTag = ""
+          }
+
           $packageRoot = Join-Path $env:GITHUB_WORKSPACE "build\package"
           $pluginDest = Join-Path $packageRoot "obs-plugins\64bit"
           $localeDest = Join-Path $packageRoot "data\obs-plugins\delaydeck\locale"
@@ -95,19 +137,13 @@ jobs:
           Copy-Item "$env:GITHUB_WORKSPACE\build\relay\delaydeck-relay.exe" (Join-Path $pluginDest "delaydeck-relay.exe") -Force
           Copy-Item "$env:GITHUB_WORKSPACE\apps\obs-plugin\data\locale\*.ini" $localeDest -Force
 
-          if ($env:GITHUB_REF_TYPE -eq "tag") {
-            $version = $env:GITHUB_REF_NAME
-          } else {
-            $shortSha = $env:GITHUB_SHA.Substring(0, 7)
-            $version = "dev-$shortSha"
-          }
-
           $zipName = "delaydeck-$version-windows-x64.zip"
           $zipPath = Join-Path $artifactDir $zipName
           Compress-Archive -Path "$packageRoot\*" -DestinationPath $zipPath -Force
 
           "zip_name=$zipName" >> $env:GITHUB_OUTPUT
           "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
 
           Get-ChildItem $packageRoot -Recurse | Select-Object FullName, Length
 
@@ -117,3 +153,16 @@ jobs:
           name: ${{ steps.package.outputs.zip_name }}
           path: ${{ steps.package.outputs.zip_path }}
           if-no-files-found: error
+
+      - name: Upload package to GitHub Release
+        if: >-
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.package.outputs.release_tag }}
+          name: DelayDeck ${{ steps.package.outputs.release_tag }}
+          files: ${{ steps.package.outputs.zip_path }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
