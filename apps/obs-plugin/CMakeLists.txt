@@ -20,6 +20,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 set(PLUGIN_SOURCES
     src/plugin-module.c
     src/plugin-main.cpp
+    src/config/dock-settings.cpp
+    src/config/dock-settings.hpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
     src/obs/slate-scene-controller.cpp

@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 
+#include "config/dock-settings.hpp"
 #include "dock/delaydeck-dock.hpp"
 #include "version.hpp"
 
@@ -28,6 +29,8 @@ bool obs_module_load(void)
 		return false;
 	}
 
+	delaydeck::registerDockSettingsCallbacks(g_dock);
+
 	blog(LOG_INFO, "[DelayDeck] loaded version %s", DELAYDECK_PLUGIN_VERSION);
 	return true;
 }
@@ -38,6 +41,7 @@ void obs_module_unload(void)
 		// obs_frontend_remove_dock deletes the dock widget (via OBSDock).
 		// Do not delete g_dock here — that would double-free and crash OBS.
 		g_dock->shutdown();
+		delaydeck::unregisterDockSettingsCallbacks();
 		obs_frontend_remove_dock(kDockId);
 		g_dock = nullptr;
 	}

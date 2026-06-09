@@ -10,6 +10,7 @@ enum class PreflightFailureCode {
 	IngestNotListening,
 	DestinationNotConfigured,
 	DestinationNotLocalRelay,
+	ObsNativeDelayEnabled,
 };
 
 struct PreflightResult {

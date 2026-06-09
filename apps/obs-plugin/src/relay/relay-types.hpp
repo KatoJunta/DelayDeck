@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDateTime>
 #include <QJsonObject>
 #include <QString>
 
@@ -23,6 +24,7 @@ struct RelayStatus {
 	QString slateMessage;
 	int countdownSeconds = 0;
 	QString lastError;
+	qint64 updatedAtMs = -1;
 };
 
 struct RelayControlError {
@@ -38,6 +40,39 @@ inline RelayHealth parseHealth(const QJsonObject &obj)
 	health.mode = obj.value(QStringLiteral("mode")).toString();
 	health.uptimeSeconds = obj.value(QStringLiteral("uptime_seconds")).toString();
 	return health;
+}
+
+// Relay timestamps are RFC3339Nano (up to 9 fractional digits). Qt's ISO parser
+// accepts at most milliseconds, so the fractional part is normalized to 3 digits.
+inline qint64 parseUpdatedAtMs(const QString &raw)
+{
+	if (raw.isEmpty()) {
+		return -1;
+	}
+
+	QString normalized = raw;
+	const int dot = normalized.indexOf(QLatin1Char('.'));
+	if (dot >= 0) {
+		int end = dot + 1;
+		while (end < normalized.size() && normalized.at(end).isDigit()) {
+			++end;
+		}
+		QString fraction = normalized.mid(dot + 1, end - dot - 1);
+		const QString suffix = normalized.mid(end);
+		if (fraction.size() > 3) {
+			fraction = fraction.left(3);
+		}
+		while (fraction.size() < 3) {
+			fraction += QLatin1Char('0');
+		}
+		normalized = normalized.left(dot + 1) + fraction + suffix;
+	}
+
+	QDateTime dt = QDateTime::fromString(normalized, Qt::ISODateWithMs);
+	if (!dt.isValid()) {
+		dt = QDateTime::fromString(raw, Qt::ISODate);
+	}
+	return dt.isValid() ? dt.toMSecsSinceEpoch() : -1;
 }
 
 inline RelayStatus parseStatus(const QJsonObject &obj)
@@ -62,6 +97,8 @@ inline RelayStatus parseStatus(const QJsonObject &obj)
 	status.countdownSeconds =
 		obj.value(QStringLiteral("countdown_seconds")).toInt();
 	status.lastError = obj.value(QStringLiteral("last_error")).toString();
+	status.updatedAtMs =
+		parseUpdatedAtMs(obj.value(QStringLiteral("updated_at")).toString());
 	return status;
 }
 

@@ -1,10 +1,14 @@
 #include "delaydeck-dock.hpp"
 
+#include "config/dock-settings.hpp"
 #include "locale/tr.hpp"
 #include "preflight/preflight-checker.hpp"
 #include "preflight/preflight-dialog.hpp"
 #include "preflight/streaming-guard.hpp"
 #include "relay/relay-client.hpp"
+
+#include <obs-frontend-api.h>
+#include <obs.hpp>
 
 #include <QGridLayout>
 #include <QHash>
@@ -100,6 +104,12 @@ bool isTransitionState(const QString &state)
 	       state == QStringLiteral("SAFE_HOLD") ||
 	       state == QStringLiteral("RETURNING_TO_REALTIME") ||
 	       state == QStringLiteral("DUMPING");
+}
+
+void selectComboItem(QComboBox *combo, const QString &value)
+{
+	const int index = combo->findData(value);
+	combo->setCurrentIndex(index >= 0 ? index : 0);
 }
 
 } // namespace
@@ -221,6 +231,34 @@ bool DelayDeckDock::showsTransition(const RelayStatus &status)
 	return isTransitionState(status.state) && status.countdownSeconds > 0;
 }
 
+bool DelayDeckDock::delayToggleCheckedForStatus(const RelayStatus &status,
+						bool startWithDelay)
+{
+	if (status.state == QStringLiteral("DELAYED") ||
+	    status.state == QStringLiteral("BUFFERING_TO_DELAY")) {
+		return true;
+	}
+	if (status.state == QStringLiteral("RETURNING_TO_REALTIME") ||
+	    status.state == QStringLiteral("DUMPING")) {
+		return false;
+	}
+	if (status.state == QStringLiteral("SAFE_HOLD")) {
+		switch (slateDisplayKind(status)) {
+		case SlateDisplayKind::EnableDelay:
+			return true;
+		case SlateDisplayKind::ReturningLive:
+		case SlateDisplayKind::Draining:
+			return false;
+		case SlateDisplayKind::None:
+			break;
+		}
+	}
+	if (status.state == QStringLiteral("REALTIME")) {
+		return startWithDelay;
+	}
+	return startWithDelay;
+}
+
 QString DelayDeckDock::transitionText(const RelayStatus &status)
 {
 	const QString message = slateMessageLabel(status);
@@ -263,10 +301,8 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	target_delay_spin_->setValue(30);
 	target_delay_spin_->setSuffix(delaydeck::tr("Value.DelaySuffix"));
 	control_row->addWidget(target_delay_spin_);
-	enable_delay_button_ = new QPushButton(delaydeck::tr("Button.EnableDelay"), this);
-	return_live_button_ = new QPushButton(delaydeck::tr("Button.ReturnLive"), this);
-	control_row->addWidget(enable_delay_button_);
-	control_row->addWidget(return_live_button_);
+	delay_toggle_ = new QCheckBox(delaydeck::tr("Toggle.DelayStream"), this);
+	control_row->addWidget(delay_toggle_);
 	layout->addLayout(control_row);
 
 	dump_buffer_button_ = new QPushButton(delaydeck::tr("Button.DumpBuffer"), this);
@@ -277,7 +313,6 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 
 	advanced_toggle_button_ = new QPushButton(delaydeck::tr("Section.ShowAdvanced"), this);
 	advanced_toggle_button_->setCheckable(true);
-	advanced_toggle_button_->setChecked(false);
 	layout->addWidget(advanced_toggle_button_);
 
 	advanced_panel_ = new QWidget(this);
@@ -331,21 +366,28 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	connect(relay_client_, &RelayClient::requestFailed, this,
 		&DelayDeckDock::applyRequestFailed);
 
-	connect(enable_delay_button_, &QPushButton::clicked, this,
-		&DelayDeckDock::onEnableDelayClicked);
-	connect(return_live_button_, &QPushButton::clicked, this,
-		&DelayDeckDock::onReturnLiveClicked);
+	connect(delay_toggle_, &QCheckBox::toggled, this,
+		&DelayDeckDock::onDelayToggleChanged);
 	connect(dump_buffer_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onDumpBufferClicked);
 	connect(restart_relay_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::onRestartRelayClicked);
 	connect(advanced_toggle_button_, &QPushButton::toggled, this,
 		&DelayDeckDock::onAdvancedToggled);
+	connect(target_delay_spin_, qOverload<int>(&QSpinBox::valueChanged), this,
+		[this](int) { scheduleSettingsSave(); });
 	connect(enable_slate_scene_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
 		this, [this](int) { onEnableSlateSceneChanged(); });
 	connect(return_slate_scene_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
 		this, [this](int) { onReturnSlateSceneChanged(); });
 
+	settings_save_timer_.setSingleShot(true);
+	settings_save_timer_.setInterval(400);
+	connect(&settings_save_timer_, &QTimer::timeout, this, []() {
+		obs_frontend_save();
+	});
+
+	applyDockSettings(30, false, true, {}, {});
 	resetSummaryLabel();
 	refreshSceneSelectors();
 	updateButtonStates();
@@ -363,6 +405,16 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 
 void DelayDeckDock::handleFrontendEvent(enum obs_frontend_event event)
 {
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED) {
+		QTimer::singleShot(0, this, [this]() { maybeAutoEnableDelay(); });
+		return;
+	}
+
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED) {
+		auto_delay_triggered_ = false;
+		return;
+	}
+
 	if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
 	    event != OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED &&
 	    event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
@@ -374,6 +426,8 @@ void DelayDeckDock::handleFrontendEvent(enum obs_frontend_event event)
 
 void DelayDeckDock::shutdown()
 {
+	settings_save_timer_.stop();
+	obs_frontend_save();
 	StreamingGuard::uninstall();
 	slate_scene_controller_.clear();
 	relay_client_->stop();
@@ -416,6 +470,14 @@ void DelayDeckDock::applyHealth(const RelayHealth &health)
 
 void DelayDeckDock::applyStatus(const RelayStatus &status)
 {
+	if (status.updatedAtMs >= 0 && last_status_updated_at_ms_ >= 0 &&
+	    status.updatedAtMs < last_status_updated_at_ms_) {
+		return;
+	}
+	if (status.updatedAtMs >= 0) {
+		last_status_updated_at_ms_ = status.updatedAtMs;
+	}
+
 	relay_state_ = status.state;
 	transition_pending_ = status.transitionPending;
 	active_delay_seconds_ = status.activeDelaySeconds;
@@ -432,7 +494,9 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 	}
 
 	slate_scene_controller_.applyStatus(status);
+	syncDelayToggle(status);
 	updateButtonStates();
+	maybeAutoEnableDelay();
 }
 
 void DelayDeckDock::applyProcessState(RelayProcessState state)
@@ -473,11 +537,16 @@ void DelayDeckDock::applyLinkState(RelayLinkState state)
 		relay_state_.clear();
 		transition_pending_ = false;
 		active_delay_seconds_ = 0;
+		last_status_updated_at_ms_ = -1;
 		transition_label_->hide();
 		slate_scene_controller_.clear();
 	}
 
 	updateSummaryLabel();
+	{
+		const QSignalBlocker blocker(delay_toggle_);
+		delay_toggle_->setChecked(start_with_delay_);
+	}
 	updateButtonStates();
 }
 
@@ -574,6 +643,108 @@ void DelayDeckDock::onAdvancedToggled(bool visible)
 	advanced_toggle_button_->setText(visible
 						 ? delaydeck::tr("Section.HideAdvanced")
 						 : delaydeck::tr("Section.ShowAdvanced"));
+	if (!loading_settings_) {
+		scheduleSettingsSave();
+	}
+}
+
+void DelayDeckDock::scheduleSettingsSave()
+{
+	if (loading_settings_) {
+		return;
+	}
+	settings_save_timer_.start();
+}
+
+void DelayDeckDock::applyDockSettings(int targetDelaySeconds, bool delayStream,
+				      bool advancedVisible,
+				      const QString &enableSlateScene,
+				      const QString &returnSlateScene)
+{
+	loading_settings_ = true;
+
+	if (targetDelaySeconds >= target_delay_spin_->minimum() &&
+	    targetDelaySeconds <= target_delay_spin_->maximum()) {
+		target_delay_spin_->setValue(targetDelaySeconds);
+	}
+
+	start_with_delay_ = delayStream;
+	{
+		const QSignalBlocker blocker(delay_toggle_);
+		delay_toggle_->setChecked(delayStream);
+	}
+
+	{
+		const QSignalBlocker blocker(advanced_toggle_button_);
+		advanced_toggle_button_->setChecked(advancedVisible);
+	}
+	onAdvancedToggled(advancedVisible);
+
+	slate_scene_controller_.setEnableSceneName(enableSlateScene);
+	slate_scene_controller_.setReturnSceneName(returnSlateScene);
+	refreshSceneSelectors();
+	selectComboItem(enable_slate_scene_combo_, enableSlateScene);
+	selectComboItem(return_slate_scene_combo_, returnSlateScene);
+	onEnableSlateSceneChanged();
+	onReturnSlateSceneChanged();
+
+	loading_settings_ = false;
+	updateButtonStates();
+}
+
+void DelayDeckDock::loadSettings(obs_data_t *data)
+{
+	if (!data) {
+		return;
+	}
+
+	OBSDataAutoRelease obj = obs_data_get_obj(data, delaydeck::kDockSettingsKey);
+	if (!obj) {
+		return;
+	}
+
+	int targetDelay = static_cast<int>(obs_data_get_int(obj, "target_delay_seconds"));
+	if (targetDelay < target_delay_spin_->minimum() ||
+	    targetDelay > target_delay_spin_->maximum()) {
+		targetDelay = target_delay_spin_->value();
+	}
+
+	const bool delayStream = obs_data_get_bool(obj, "delay_stream");
+	bool advancedVisible = true;
+	if (obs_data_has_user_value(obj, "advanced_visible")) {
+		advancedVisible = obs_data_get_bool(obj, "advanced_visible");
+	}
+
+	const QString enableScene =
+		QString::fromUtf8(obs_data_get_string(obj, "enable_slate_scene"));
+	const QString returnScene =
+		QString::fromUtf8(obs_data_get_string(obj, "return_slate_scene"));
+
+	applyDockSettings(targetDelay, delayStream, advancedVisible, enableScene,
+			  returnScene);
+}
+
+void DelayDeckDock::saveSettings(obs_data_t *data) const
+{
+	if (!data) {
+		return;
+	}
+
+	OBSDataAutoRelease obj = obs_data_create();
+	obs_data_set_int(obj, "target_delay_seconds", target_delay_spin_->value());
+	obs_data_set_bool(obj, "delay_stream", start_with_delay_);
+	obs_data_set_bool(obj, "advanced_visible", advanced_panel_->isVisible());
+	obs_data_set_string(obj, "enable_slate_scene",
+			    enable_slate_scene_combo_->currentData()
+				    .toString()
+				    .toUtf8()
+				    .constData());
+	obs_data_set_string(obj, "return_slate_scene",
+			    return_slate_scene_combo_->currentData()
+				    .toString()
+				    .toUtf8()
+				    .constData());
+	obs_data_set_obj(data, delaydeck::kDockSettingsKey, obj);
 }
 
 void DelayDeckDock::refreshSceneSelectors()
@@ -597,11 +768,62 @@ void DelayDeckDock::startRelayClient()
 
 bool DelayDeckDock::canEditDelayTarget() const
 {
-	if (relay_state_.isEmpty()) {
+	if (relay_state_ == QStringLiteral("DELAYED")) {
+		return false;
+	}
+	if (transition_pending_ || isTransitionState(relay_state_)) {
+		return false;
+	}
+	return true;
+}
+
+bool DelayDeckDock::canOperateDelayToggle() const
+{
+	const bool connected = link_state_ == RelayLinkState::Connected;
+	const bool processRunning =
+		!relay_process_->isManaged() ||
+		process_state_ == RelayProcessState::Running;
+	if (!connected || !processRunning) {
+		return false;
+	}
+
+	if (!obs_frontend_streaming_active()) {
 		return true;
 	}
 
-	return relay_state_ == QStringLiteral("REALTIME");
+	if (transition_pending_ || isTransitionState(relay_state_)) {
+		return false;
+	}
+
+	return relay_state_ == QStringLiteral("REALTIME") ||
+	       relay_state_ == QStringLiteral("DELAYED");
+}
+
+void DelayDeckDock::syncDelayToggle(const RelayStatus &status)
+{
+	const bool checked =
+		delayToggleCheckedForStatus(status, start_with_delay_);
+	const QSignalBlocker blocker(delay_toggle_);
+	delay_toggle_->setChecked(checked);
+}
+
+void DelayDeckDock::maybeAutoEnableDelay()
+{
+	if (!start_with_delay_ || auto_delay_triggered_) {
+		return;
+	}
+	if (!obs_frontend_streaming_active()) {
+		return;
+	}
+	if (link_state_ != RelayLinkState::Connected) {
+		return;
+	}
+	if (relay_state_ != QStringLiteral("REALTIME") || transition_pending_) {
+		return;
+	}
+
+	relay_client_->enableDelay(target_delay_spin_->value());
+	auto_delay_triggered_ = true;
 }
 
 void DelayDeckDock::updateButtonStates()
@@ -615,8 +837,7 @@ void DelayDeckDock::updateButtonStates()
 		(process_state_ == RelayProcessState::Starting ||
 		 process_state_ == RelayProcessState::Stopping);
 
-	enable_delay_button_->setEnabled(connected && processRunning);
-	return_live_button_->setEnabled(connected && processRunning);
+	delay_toggle_->setEnabled(canOperateDelayToggle());
 	dump_buffer_button_->setEnabled(connected && processRunning);
 	target_delay_spin_->setEnabled(connected && processRunning &&
 					canEditDelayTarget());
@@ -624,14 +845,67 @@ void DelayDeckDock::updateButtonStates()
 					  !processBusy);
 }
 
-void DelayDeckDock::onEnableDelayClicked()
+void DelayDeckDock::onDelayToggleChanged(bool checked)
 {
-	relay_client_->enableDelay(target_delay_spin_->value());
-}
+	const bool streaming = obs_frontend_streaming_active();
+	const bool inTransition =
+		transition_pending_ || isTransitionState(relay_state_);
+	const bool liveEnable =
+		checked && streaming &&
+		link_state_ == RelayLinkState::Connected &&
+		relay_state_ == QStringLiteral("REALTIME") && !inTransition;
+	const bool liveDisable =
+		!checked && streaming &&
+		link_state_ == RelayLinkState::Connected &&
+		relay_state_ == QStringLiteral("DELAYED") && !inTransition;
 
-void DelayDeckDock::onReturnLiveClicked()
-{
-	relay_client_->returnLive();
+	QString title;
+	QString message;
+	if (checked) {
+		title = delaydeck::tr("ToggleDelay.Enable.Title");
+		message = liveEnable
+				  ? delaydeck::tr("ToggleDelay.Enable.LiveMessage")
+					    .arg(target_delay_spin_->value())
+				  : delaydeck::tr("ToggleDelay.Enable.PreStreamMessage")
+					    .arg(target_delay_spin_->value());
+	} else {
+		title = delaydeck::tr("ToggleDelay.Disable.Title");
+		message = liveDisable
+				  ? delaydeck::tr("ToggleDelay.Disable.LiveMessage")
+				  : delaydeck::tr("ToggleDelay.Disable.PreStreamMessage");
+	}
+
+	const auto answer = QMessageBox::question(
+		this, title, message, QMessageBox::Yes | QMessageBox::No,
+		QMessageBox::No);
+	if (answer != QMessageBox::Yes) {
+		const QSignalBlocker blocker(delay_toggle_);
+		delay_toggle_->setChecked(!checked);
+		return;
+	}
+
+	start_with_delay_ = checked;
+	scheduleSettingsSave();
+
+	if (!streaming) {
+		return;
+	}
+	if (link_state_ != RelayLinkState::Connected) {
+		return;
+	}
+	if (inTransition) {
+		return;
+	}
+
+	if (checked && relay_state_ == QStringLiteral("REALTIME")) {
+		relay_client_->enableDelay(target_delay_spin_->value());
+		auto_delay_triggered_ = true;
+		return;
+	}
+
+	if (!checked && relay_state_ == QStringLiteral("DELAYED")) {
+		relay_client_->returnLive();
+	}
 }
 
 void DelayDeckDock::onDumpBufferClicked()
@@ -642,7 +916,14 @@ void DelayDeckDock::onDumpBufferClicked()
 	if (answer != QMessageBox::Yes) {
 		return;
 	}
+
+	start_with_delay_ = false;
+	{
+		const QSignalBlocker blocker(delay_toggle_);
+		delay_toggle_->setChecked(false);
+	}
 	relay_client_->dumpBuffer();
+	scheduleSettingsSave();
 }
 
 void DelayDeckDock::onRestartRelayClicked()
@@ -664,10 +945,12 @@ void DelayDeckDock::onEnableSlateSceneChanged()
 {
 	slate_scene_controller_.setEnableSceneName(
 		enable_slate_scene_combo_->currentData().toString());
+	scheduleSettingsSave();
 }
 
 void DelayDeckDock::onReturnSlateSceneChanged()
 {
 	slate_scene_controller_.setReturnSceneName(
 		return_slate_scene_combo_->currentData().toString());
+	scheduleSettingsSave();
 }

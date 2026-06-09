@@ -20,4 +20,5 @@ private:
 	static bool fetchRelayHealthy(const QString &apiBaseUrl, QString *detail);
 	static PreflightResult checkObsDestination(const QString &expectedHost,
 						     quint16 expectedPort);
+	static PreflightResult checkObsNativeStreamDelay();
 };

@@ -8,10 +8,14 @@
 
 #include <obs-frontend-api.h>
 
+#include <obs.h>
+
+#include <QCheckBox>
 #include <QComboBox>
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QTimer>
 #include <QWidget>
 
 class DelayDeckDock final : public QWidget {
@@ -23,6 +27,9 @@ public:
 
 	void shutdown();
 	void handleFrontendEvent(enum obs_frontend_event event);
+
+	void loadSettings(obs_data_t *data);
+	void saveSettings(obs_data_t *data) const;
 
 	PreflightResult runPreflight();
 	void setLastPreflightResult(const PreflightResult &result);
@@ -39,7 +46,10 @@ private:
 	static QString slateMessageLabel(const RelayStatus &status);
 	static QString transitionText(const RelayStatus &status);
 	static bool showsTransition(const RelayStatus &status);
+	static bool delayToggleCheckedForStatus(const RelayStatus &status,
+						bool startWithDelay);
 	bool canEditDelayTarget() const;
+	bool canOperateDelayToggle() const;
 
 	void applyHealth(const RelayHealth &health);
 	void applyStatus(const RelayStatus &status);
@@ -59,12 +69,18 @@ private:
 	void resetSummaryLabel();
 	void onAdvancedToggled(bool visible);
 
-	void onEnableDelayClicked();
-	void onReturnLiveClicked();
+	void syncDelayToggle(const RelayStatus &status);
+	void maybeAutoEnableDelay();
+	void onDelayToggleChanged(bool checked);
 	void onDumpBufferClicked();
 	void onRestartRelayClicked();
 	void onEnableSlateSceneChanged();
 	void onReturnSlateSceneChanged();
+	void scheduleSettingsSave();
+	void applyDockSettings(int targetDelaySeconds, bool delayStream,
+			       bool advancedVisible,
+			       const QString &enableSlateScene,
+			       const QString &returnSlateScene);
 
 	RelayProcess *relay_process_;
 	RelayClient *relay_client_;
@@ -78,8 +94,7 @@ private:
 	QSpinBox *target_delay_spin_;
 	QComboBox *enable_slate_scene_combo_;
 	QComboBox *return_slate_scene_combo_;
-	QPushButton *enable_delay_button_;
-	QPushButton *return_live_button_;
+	QCheckBox *delay_toggle_;
 	QPushButton *dump_buffer_button_;
 	QPushButton *restart_relay_button_;
 
@@ -89,5 +104,10 @@ private:
 	QString relay_state_;
 	bool transition_pending_ = false;
 	int active_delay_seconds_ = 0;
+	qint64 last_status_updated_at_ms_ = -1;
+	bool start_with_delay_ = false;
+	bool auto_delay_triggered_ = false;
+	bool loading_settings_ = false;
+	QTimer settings_save_timer_;
 	PreflightResult last_preflight_result_{true, PreflightFailureCode::None, {}};
 };

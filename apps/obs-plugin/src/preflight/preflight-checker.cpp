@@ -5,6 +5,7 @@
 #include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <obs.hpp>
+#include <util/config-file.h>
 
 #include <QEventLoop>
 #include <QHostAddress>
@@ -198,6 +199,48 @@ PreflightResult PreflightChecker::checkObsDestination(const QString &expectedHos
 	return PreflightResult{true, PreflightFailureCode::None, {}};
 }
 
+PreflightResult PreflightChecker::checkObsNativeStreamDelay()
+{
+	config_t *config = obs_frontend_get_profile_config();
+	if (!config) {
+		return PreflightResult{true, PreflightFailureCode::None, {}};
+	}
+
+	const bool delayEnabled =
+		config_get_bool(config, "Output", "DelayEnable");
+	const int profileDelaySec = config_get_int(config, "Output", "DelaySec");
+
+	int effectiveDelaySec = 0;
+	if (delayEnabled) {
+		effectiveDelaySec = profileDelaySec;
+	}
+
+	obs_output_t *output = obs_frontend_get_streaming_output();
+	if (output) {
+		const uint32_t outputDelaySec = obs_output_get_delay(output);
+		if (outputDelaySec > 0) {
+			effectiveDelaySec =
+				static_cast<int>(outputDelaySec);
+		}
+		const uint32_t activeDelaySec =
+			obs_output_get_active_delay(output);
+		if (activeDelaySec > 0) {
+			effectiveDelaySec =
+				static_cast<int>(activeDelaySec);
+		}
+	}
+
+	if (delayEnabled || effectiveDelaySec > 0) {
+		const int reportedSeconds =
+			effectiveDelaySec > 0 ? effectiveDelaySec : profileDelaySec;
+		return fail(PreflightFailureCode::ObsNativeDelayEnabled,
+			    QString::number(reportedSeconds > 0 ? reportedSeconds
+								: 0));
+	}
+
+	return PreflightResult{true, PreflightFailureCode::None, {}};
+}
+
 PreflightResult PreflightChecker::run(RelayProcessState processState,
 				      bool managedRelay,
 				      const QString &apiBaseUrl,
@@ -240,6 +283,11 @@ PreflightResult PreflightChecker::run(RelayProcessState processState,
 	}
 
 	if (delayDeckModeEnabled()) {
+		const PreflightResult nativeDelay = checkObsNativeStreamDelay();
+		if (!nativeDelay.ok) {
+			return nativeDelay;
+		}
+
 		const PreflightResult destination =
 			checkObsDestination(ingestHost, ingestPort);
 		if (!destination.ok) {
