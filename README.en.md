@@ -62,13 +62,13 @@ OBS (encode) → local Relay (delay control) → YouTube / Twitch / etc.
 
 ### Main features
 
-| | |
+| Feature | Description |
 | --- | --- |
-| Delay on/off | Switch between realtime and delayed streaming mid-broadcast |
-| Slate scenes | Viewer-facing screens during delay transitions and return-to-live |
-| Return to Live Now | Discard unsent content and return to live (Dump Buffer, confirmation required) |
-| Preflight checks | Validate Relay, destination, and slate setup before going live |
-| Destination presets | Quick RTMP setup for YouTube, Twitch, and other platforms |
+| **Delay on/off** | Switch between realtime and delayed streaming mid-broadcast |
+| **Slate scenes** | Viewer-facing screens during delay transitions and return-to-live |
+| **Return to Live Now** | Discard unsent content and return to live (Dump Buffer, confirmation required) |
+| **Preflight checks** | Validate Relay, destination, and slate setup before going live |
+| **Destination presets** | Quick RTMP setup for YouTube, Twitch, and other platforms |
 
 ## Requirements
 
