@@ -4,9 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       obs_ref:
-        description: "OBS Studio git ref to build against"
+        description: "OBS Studio release tag to build against"
         required: true
-        default: "master"
+        type: choice
+        default: "all"
+        options:
+          - "all"
+          - "32.1.2"
+          - "31.1.2"
+          - "30.2.3"
       version:
         description: "Release tag (example: v0.1.0). Empty uses VERSION file."
         required: false
@@ -26,6 +32,10 @@ jobs:
   build-windows-zip:
     name: Build Windows x64 package
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        obs_ref: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.obs_ref != 'all' && format('["{0}"]', inputs.obs_ref) || '["32.1.2","31.1.2","30.2.3"]') }}
 
     defaults:
       run:
@@ -33,7 +43,7 @@ jobs:
 
     env:
       BUILD_TYPE: RelWithDebInfo
-      OBS_REF: ${{ github.event.inputs.obs_ref || 'master' }}
+      OBS_REF: ${{ matrix.obs_ref }}
       INPUT_VERSION: ${{ github.event.inputs.version || '' }}
       INPUT_PUBLISH_RELEASE: ${{ github.event.inputs.publish_release || 'false' }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -152,12 +162,14 @@ jobs:
           Copy-Item "$env:GITHUB_WORKSPACE\build\relay\delaydeck-relay.exe" (Join-Path $pluginDest "delaydeck-relay.exe") -Force
           Copy-Item "$env:GITHUB_WORKSPACE\apps\obs-plugin\data\locale\*.ini" $localeDest -Force
 
-          $zipName = "delaydeck-$version-windows-x64.zip"
+          $zipName = "delaydeck-$version-obs-$env:OBS_REF-windows-x64.zip"
           $zipPath = Join-Path $artifactDir $zipName
           Compress-Archive -Path "$packageRoot\*" -DestinationPath $zipPath -Force
 
+          $artifactName = "delaydeck-$version-obs-$env:OBS_REF-windows-x64"
           "zip_name=$zipName" >> $env:GITHUB_OUTPUT
           "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+          "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
           "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
 
           Get-ChildItem $packageRoot -Recurse | Select-Object FullName, Length
@@ -165,8 +177,8 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.package.outputs.zip_name }}
-          path: ${{ steps.package.outputs.zip_path }}
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: build/package/**
           if-no-files-found: error
 
       - name: Upload package to GitHub Release
