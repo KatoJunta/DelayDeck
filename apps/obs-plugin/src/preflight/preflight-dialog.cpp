@@ -21,6 +21,8 @@ QString PreflightDialog::messageFor(const PreflightResult &result)
 		return delaydeck::tr("Preflight.DestinationNotLocalRelay").arg(result.detail);
 	case PreflightFailureCode::ObsNativeDelayEnabled:
 		return delaydeck::tr("Preflight.ObsNativeDelayEnabled").arg(result.detail);
+	case PreflightFailureCode::SlateScenesNotConfigured:
+		return delaydeck::tr("Preflight.SlateScenesNotConfigured");
 	case PreflightFailureCode::None:
 		break;
 	}

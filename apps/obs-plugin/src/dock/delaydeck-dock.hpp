@@ -52,6 +52,7 @@ private:
 						bool startWithDelay);
 	bool canEditDelayTarget() const;
 	bool canOperateDelayToggle() const;
+	bool slateScenesConfigured() const;
 	bool hadActiveDelayBuffer() const;
 
 	void applyHealth(const RelayHealth &health);
@@ -69,6 +70,7 @@ private:
 	void startRelayClient();
 	void updatePreflightDisplay(const PreflightResult &result);
 	void refreshSceneSelectors();
+	void updateSlateSceneState();
 	void resetSummaryLabel();
 	void onAdvancedToggled(bool visible);
 

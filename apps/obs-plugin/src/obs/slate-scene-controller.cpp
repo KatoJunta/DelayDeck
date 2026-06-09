@@ -78,6 +78,16 @@ void SlateSceneController::clear()
 	controlled_scene_name_.clear();
 }
 
+bool SlateSceneController::sceneExists(const QString &name)
+{
+	obs_source_t *scene = findSceneByName(name);
+	if (!scene) {
+		return false;
+	}
+	obs_source_release(scene);
+	return true;
+}
+
 QStringList SlateSceneController::sceneNames()
 {
 	QStringList names;

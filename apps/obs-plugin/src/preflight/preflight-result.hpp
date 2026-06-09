@@ -11,6 +11,7 @@ enum class PreflightFailureCode {
 	DestinationNotConfigured,
 	DestinationNotLocalRelay,
 	ObsNativeDelayEnabled,
+	SlateScenesNotConfigured,
 };
 
 struct PreflightResult {

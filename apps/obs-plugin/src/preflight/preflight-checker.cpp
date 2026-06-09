@@ -1,6 +1,7 @@
 #include "preflight-checker.hpp"
 
 #include "config/relay-settings.hpp"
+#include "obs/slate-scene-controller.hpp"
 
 #include "relay/relay-types.hpp"
 
@@ -243,10 +244,31 @@ PreflightResult PreflightChecker::checkObsNativeStreamDelay()
 	return PreflightResult{true, PreflightFailureCode::None, {}};
 }
 
+PreflightResult PreflightChecker::checkSlateScenes(const QString &enableSlateScene,
+						   const QString &returnSlateScene)
+{
+	const QString enable = enableSlateScene.trimmed();
+	const QString returnScene = returnSlateScene.trimmed();
+	if (enable.isEmpty() || returnScene.isEmpty()) {
+		return fail(PreflightFailureCode::SlateScenesNotConfigured,
+			    QStringLiteral("slate scenes are not selected"));
+	}
+
+	if (!SlateSceneController::sceneExists(enable) ||
+	    !SlateSceneController::sceneExists(returnScene)) {
+		return fail(PreflightFailureCode::SlateScenesNotConfigured,
+			    QStringLiteral("selected slate scenes are missing"));
+	}
+
+	return PreflightResult{true, PreflightFailureCode::None, {}};
+}
+
 PreflightResult PreflightChecker::run(RelayProcessState processState,
 				      bool managedRelay,
 				      const QString &apiBaseUrl,
-				      const QString &sessionToken)
+				      const QString &sessionToken,
+				      const QString &enableSlateScene,
+				      const QString &returnSlateScene)
 {
 	Q_UNUSED(sessionToken);
 
@@ -294,6 +316,12 @@ PreflightResult PreflightChecker::run(RelayProcessState processState,
 			checkObsDestination(ingestHost, ingestPort);
 		if (!destination.ok) {
 			return destination;
+		}
+
+		const PreflightResult slateScenes =
+			checkSlateScenes(enableSlateScene, returnSlateScene);
+		if (!slateScenes.ok) {
+			return slateScenes;
 		}
 	}
 

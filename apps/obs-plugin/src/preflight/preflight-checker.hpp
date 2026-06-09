@@ -9,7 +9,9 @@ class PreflightChecker final {
 public:
 	static PreflightResult run(RelayProcessState processState, bool managedRelay,
 				   const QString &apiBaseUrl,
-				   const QString &sessionToken);
+				   const QString &sessionToken,
+				   const QString &enableSlateScene,
+				   const QString &returnSlateScene);
 
 private:
 	static bool delayDeckModeEnabled();
@@ -21,4 +23,6 @@ private:
 	static PreflightResult checkObsDestination(const QString &expectedHost,
 						     quint16 expectedPort);
 	static PreflightResult checkObsNativeStreamDelay();
+	static PreflightResult checkSlateScenes(const QString &enableSlateScene,
+						const QString &returnSlateScene);
 };

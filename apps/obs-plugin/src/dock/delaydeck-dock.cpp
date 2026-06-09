@@ -29,7 +29,7 @@ void populateSceneCombo(QComboBox *combo, const QStringList &sceneNames)
 	const QSignalBlocker blocker(combo);
 
 	combo->clear();
-	combo->addItem(delaydeck::tr("SlateScene.None"), QString());
+	combo->addItem(delaydeck::tr("SlateScene.Select"), QString());
 	for (const QString &name : sceneNames) {
 		combo->addItem(name, name);
 	}
@@ -399,7 +399,6 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	applyDockSettings(30, false, true, {}, {});
 	resetSummaryLabel();
 	refreshSceneSelectors();
-	updateButtonStates();
 
 	if (relay_process_->isManaged()) {
 		process_state_ = RelayProcessState::Idle;
@@ -457,9 +456,11 @@ void DelayDeckDock::shutdown()
 
 PreflightResult DelayDeckDock::runPreflight()
 {
-	return PreflightChecker::run(process_state_, relay_process_->isManaged(),
-				     relay_client_->apiBaseUrl(),
-				     relay_process_->sessionToken());
+	return PreflightChecker::run(
+		process_state_, relay_process_->isManaged(),
+		relay_client_->apiBaseUrl(), relay_process_->sessionToken(),
+		enable_slate_scene_combo_->currentData().toString(),
+		return_slate_scene_combo_->currentData().toString());
 }
 
 void DelayDeckDock::setLastPreflightResult(const PreflightResult &result)
@@ -510,6 +511,8 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 	} else if (!last_preflight_result_.ok &&
 		   last_preflight_result_.code != PreflightFailureCode::None) {
 		updatePreflightDisplay(last_preflight_result_);
+	} else if (!slateScenesConfigured()) {
+		showError(delaydeck::tr("SlateScene.Required"));
 	} else {
 		clearError();
 	}
@@ -710,7 +713,7 @@ void DelayDeckDock::applyDockSettings(int targetDelaySeconds, bool delayStream,
 	onReturnSlateSceneChanged();
 
 	loading_settings_ = false;
-	updateButtonStates();
+	updateSlateSceneState();
 }
 
 void DelayDeckDock::loadSettings(obs_data_t *data)
@@ -775,6 +778,39 @@ void DelayDeckDock::refreshSceneSelectors()
 	populateSceneCombo(return_slate_scene_combo_, sceneNames);
 	onEnableSlateSceneChanged();
 	onReturnSlateSceneChanged();
+	updateSlateSceneState();
+}
+
+bool DelayDeckDock::slateScenesConfigured() const
+{
+	const QString enableScene =
+		enable_slate_scene_combo_->currentData().toString().trimmed();
+	const QString returnScene =
+		return_slate_scene_combo_->currentData().toString().trimmed();
+	if (enableScene.isEmpty() || returnScene.isEmpty()) {
+		return false;
+	}
+
+	return SlateSceneController::sceneExists(enableScene) &&
+	       SlateSceneController::sceneExists(returnScene);
+}
+
+void DelayDeckDock::updateSlateSceneState()
+{
+	updateButtonStates();
+
+	const QString requiredMsg = delaydeck::tr("SlateScene.Required");
+	if (!slateScenesConfigured()) {
+		if (error_label_->isHidden() ||
+		    error_label_->text() == requiredMsg) {
+			showError(requiredMsg);
+		}
+		return;
+	}
+
+	if (error_label_->text() == requiredMsg) {
+		clearError();
+	}
 }
 
 void DelayDeckDock::startRelayClient()
@@ -800,6 +836,10 @@ bool DelayDeckDock::canEditDelayTarget() const
 
 bool DelayDeckDock::canOperateDelayToggle() const
 {
+	if (!slateScenesConfigured()) {
+		return false;
+	}
+
 	const bool connected = link_state_ == RelayLinkState::Connected;
 	const bool processRunning =
 		!relay_process_->isManaged() ||
@@ -830,6 +870,9 @@ void DelayDeckDock::syncDelayToggle(const RelayStatus &status)
 
 void DelayDeckDock::maybeAutoEnableDelay()
 {
+	if (!slateScenesConfigured()) {
+		return;
+	}
 	if (!start_with_delay_ || auto_delay_triggered_) {
 		return;
 	}
@@ -859,7 +902,8 @@ void DelayDeckDock::updateButtonStates()
 		 process_state_ == RelayProcessState::Stopping);
 
 	delay_toggle_->setEnabled(canOperateDelayToggle());
-	dump_buffer_button_->setEnabled(connected && processRunning);
+	dump_buffer_button_->setEnabled(connected && processRunning &&
+					slateScenesConfigured());
 	target_delay_spin_->setEnabled(connected && processRunning &&
 					canEditDelayTarget());
 	restart_relay_button_->setEnabled(relay_process_->isManaged() &&
@@ -931,6 +975,12 @@ void DelayDeckDock::onDelayToggleChanged(bool checked)
 
 void DelayDeckDock::onDumpBufferClicked()
 {
+	if (!slateScenesConfigured()) {
+		QMessageBox::warning(this, delaydeck::tr("DumpBuffer.Title"),
+				     delaydeck::tr("SlateScene.Required"));
+		return;
+	}
+
 	const auto answer = QMessageBox::question(
 		this, delaydeck::tr("DumpBuffer.Title"), delaydeck::tr("DumpBuffer.Message"),
 		QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
@@ -967,6 +1017,7 @@ void DelayDeckDock::onEnableSlateSceneChanged()
 	slate_scene_controller_.setEnableSceneName(
 		enable_slate_scene_combo_->currentData().toString());
 	scheduleSettingsSave();
+	updateSlateSceneState();
 }
 
 void DelayDeckDock::onReturnSlateSceneChanged()
@@ -974,6 +1025,7 @@ void DelayDeckDock::onReturnSlateSceneChanged()
 	slate_scene_controller_.setReturnSceneName(
 		return_slate_scene_combo_->currentData().toString());
 	scheduleSettingsSave();
+	updateSlateSceneState();
 }
 
 void DelayDeckDock::syncManagedRelayStartup()

@@ -14,6 +14,7 @@ public:
 	void clear();
 
 	static QStringList sceneNames();
+	static bool sceneExists(const QString &name);
 
 private:
 	enum class SlateKind {
