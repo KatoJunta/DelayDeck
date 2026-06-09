@@ -66,6 +66,8 @@ jobs:
           ref: ${{ env.OBS_REF }}
           path: external/obs-studio
           submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
