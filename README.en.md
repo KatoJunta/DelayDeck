@@ -1,19 +1,47 @@
+<div align="center">
+
 # DelayDeck
 
-<p align="center">
-  <img src="assets/DelayDeck_image.png" alt="DelayDeck dock UI" width="720">
-</p>
+**Dynamic stream delay for OBS Studio — toggled while you are live**
+
+<br>
+
+<img src="assets/DelayDeck_image.png" alt="DelayDeck dock UI" width="720">
+
+<sub>DelayDeck Dock — delay controls, status, and destination setup</sub>
+
+<br>
 
 [日本語 README](README.md)
+
+<br>
 
 [![GitHub Stars](https://img.shields.io/github/stars/KatoJunta/DelayDeck?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/stargazers)
 [![Latest Release](https://img.shields.io/github/v/release/KatoJunta/DelayDeck?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/releases/latest)
 [![Release Downloads](https://img.shields.io/github/downloads/KatoJunta/DelayDeck/total?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/releases)
 [![License: MIT](https://img.shields.io/github/license/KatoJunta/DelayDeck?style=flat-square)](LICENSE)
 
+<br>
+
+[**Download**](https://github.com/KatoJunta/DelayDeck/releases)
+&nbsp;·&nbsp;
+<a href="#install">Install (ZIP)</a>
+&nbsp;·&nbsp;
+<a href="#build">Build</a>
+&nbsp;·&nbsp;
+<a href="#faq">FAQ</a>
+&nbsp;·&nbsp;
+<a href="#roadmap">Roadmap</a>
+
+</div>
+
+<br>
+
 **DelayDeck** is a plugin and Relay Engine that makes OBS Studio’s built-in stream delay more flexible to use.
 
-OBS’s default stream delay cannot be toggled mid-stream. That is awkward for low-latency competitive games, where viewers may receive information before the streamer does. DelayDeck was built for that use case.
+When streaming real-time competitive games with no broadcast delay, viewers may receive information before the streamer does, putting the streamer at a disadvantage. OBS’s built-in stream delay cannot be toggled on or off during a stream, so streamers had to choose between prioritizing in-game performance or engaging with their audience.
+
+DelayDeck was built so you can **toggle delay on or off without stopping your stream**—helping you enjoy both the game and interaction with your viewers.
 
 ## Components
 
@@ -34,11 +62,13 @@ OBS (encode) → local Relay (delay control) → YouTube / Twitch / etc.
 
 ### Main features
 
-- **Turn delay on/off** while streaming
-- **Slate scenes** during delay transitions and return-to-live
-- **Return to Live Now** (Dump Buffer) — discard unsent delayed content and return to live (confirmation required)
-- **Preflight checks** before going live (Relay health, OBS destination, slate scene setup, etc.)
-- **Destination presets** for YouTube, Twitch, and other platforms
+| | |
+| --- | --- |
+| Delay on/off | Switch between realtime and delayed streaming mid-broadcast |
+| Slate scenes | Viewer-facing screens during delay transitions and return-to-live |
+| Return to Live Now | Discard unsent content and return to live (Dump Buffer, confirmation required) |
+| Preflight checks | Validate Relay, destination, and slate setup before going live |
+| Destination presets | Quick RTMP setup for YouTube, Twitch, and other platforms |
 
 ## Requirements
 
@@ -48,13 +78,15 @@ OBS (encode) → local Relay (delay control) → YouTube / Twitch / etc.
 | OBS Studio | **30.2.3**, **31.1.2**, or **32.1.2** (each build targets a specific OBS version) |
 | Architecture | x64 |
 
-The plugin may fail to load if your OBS version does not match the release build. **Always download the ZIP that matches your installed OBS version.**
+> **Note:** The plugin may fail to load if your OBS version does not match the release build. **Always download the ZIP that matches your installed OBS version.**
 
 After a new OBS major release, matching builds may take manual work. If the version you need is not on the Releases page, contact us on [X (@KatoJunta)](https://x.com/KatoJunta) or via [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues).
 
 macOS and Linux packages are not available at this time.
 
 ---
+
+<a id="install"></a>
 
 ## Install from a release (for beginners · use pre-built files)
 
@@ -121,7 +153,7 @@ Close OBS Studio before installing. Make sure it is not still running in the bac
 3. In advanced settings, choose **Enable slate scene** and **Return slate scene** (shown to viewers during transitions).
 4. If **Settings → Output → Stream Delay** is enabled in OBS, turn it **off**. DelayDeck cannot be used together with OBS built-in stream delay.
 
-That completes installation. Run a test stream before using DelayDeck on a live broadcast.
+> **Done:** Run a test stream before using DelayDeck on a live broadcast.
 
 ---
 
@@ -158,6 +190,8 @@ The viewer-facing URL and stream key are stored on the Relay side. The localhost
 Register the viewer-facing destination in the DelayDeck dock’s **Configure Destination**, not in OBS alone. If you change only the OBS settings, preflight may block streaming.
 
 ---
+
+<a id="build"></a>
 
 ## Build from source (developers)
 
@@ -218,9 +252,14 @@ Pushing a `v*` tag triggers GitHub Actions to build release ZIPs. You can also r
 
 ---
 
+<a id="faq"></a>
+
 ## FAQ
 
-### I entered a stream key, but it does not show up in the settings dialog. Was it saved?
+<details>
+<summary><strong>I entered a stream key, but it does not show up in the settings dialog. Was it saved?</strong></summary>
+
+<br>
 
 **Yes.** For security, the stream key is **not stored in plain text** in the settings UI or OBS profile.
 
@@ -233,7 +272,12 @@ The output server URL is saved in normal OBS settings. The stream key itself liv
 
 To change it, open **Configure Destination** in the dock and enter the key again.
 
-### Is the stream key handled safely?
+</details>
+
+<details>
+<summary><strong>Is the stream key handled safely?</strong></summary>
+
+<br>
 
 DelayDeck handles sensitive information as follows:
 
@@ -243,37 +287,67 @@ DelayDeck handles sensitive information as follows:
 
 This does not protect against malware or unauthorized access to your PC. Keep your system updated and install software only from sources you trust.
 
-### Does DelayDeck hurt streaming or PC performance?
+</details>
+
+<details>
+<summary><strong>Does DelayDeck hurt streaming or PC performance?</strong></summary>
+
+<br>
 
 **There is some overhead, but OBS encoding is usually the larger cost.**
 
-DelayDeck is structured as follows:
-
-- **Video encoding** — still done by OBS
-- **Delay buffering and output timing** — done by Relay
-- **OBS → Relay** — localhost RTMP on the same machine (`127.0.0.1:9401`)
+| Task | Handled by |
+| --- | --- |
+| Video encoding | OBS (as before) |
+| Delay buffering and output timing | Relay |
+| OBS → Relay | localhost RTMP on the same machine (`127.0.0.1:9401`) |
 
 Localhost forwarding uses little network bandwidth. Relay keeps delayed media in memory, so **longer delay uses more RAM**. CPU usage also scales with delay length.
 
 If you notice issues, try reducing delay length or adjusting OBS encode settings (resolution, bitrate).
 
-### Do I need to start Relay myself?
+</details>
+
+<details>
+<summary><strong>Do I need to start Relay myself?</strong></summary>
+
+<br>
 
 **No.** DelayDeck starts Relay when OBS starts and shows its status in the dock. If Relay crashes, use **Restart Engine** in the dock.
 
-### Why does OBS stream to `rtmp://127.0.0.1:9401/live`?
+</details>
+
+<details>
+<summary><strong>Why does OBS stream to <code>rtmp://127.0.0.1:9401/live</code>?</strong></summary>
+
+<br>
 
 OBS sends to a local Relay first; Relay forwards to your platform with delay control. Register the viewer-facing URL and stream key via **Configure Destination**. The localhost stream key in OBS is internal to DelayDeck.
 
-### Can I use OBS built-in Stream Delay at the same time?
+</details>
+
+<details>
+<summary><strong>Can I use OBS built-in Stream Delay at the same time?</strong></summary>
+
+<br>
 
 **No.** Preflight blocks streaming if OBS Stream Delay is enabled. Turn off **Settings → Output → Stream Delay** when using DelayDeck.
 
-### What if my OBS version does not match the release?
+</details>
+
+<details>
+<summary><strong>What if my OBS version does not match the release?</strong></summary>
+
+<br>
 
 The plugin DLL is linked against a specific OBS API version. If the `obs-XX.X.X` part of the ZIP name does not match your installed OBS, the plugin may fail to load or OBS may report an error at startup. **Always pick the matching build.**
 
-### How do I uninstall?
+</details>
+
+<details>
+<summary><strong>How do I uninstall?</strong></summary>
+
+<br>
 
 1. Quit OBS.
 2. Delete:
@@ -283,13 +357,20 @@ The plugin DLL is linked against a specific OBS API version. If the `obs-XX.X.X`
 3. To remove the stored stream key, delete DelayDeck entries in **Credential Manager**.
 4. Restore your original streaming destination URL in OBS.
 
+</details>
+
 ---
 
 ## How you can help
 
 As of v0.1.0, **long streams lasting several hours or more** have not been fully validated in our development environment.
 
-If you successfully stream for **about 2 hours or longer** with DelayDeck, please contact the developer. For a quick report, [X (@KatoJunta)](https://x.com/KatoJunta) is recommended. For detailed reports or a public record, you can also use [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues).
+If you successfully stream for **about 2 hours or longer** with DelayDeck, please contact the developer.
+
+| Contact | Best for |
+| --- | --- |
+| [X (@KatoJunta)](https://x.com/KatoJunta) | Quick success reports |
+| [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues) | Detailed or public reports |
 
 The following details are helpful:
 
@@ -301,6 +382,8 @@ The following details are helpful:
 Reports will be used to improve stability and update release notes.
 
 ---
+
+<a id="roadmap"></a>
 
 ## Roadmap
 
@@ -317,15 +400,20 @@ Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/K
 
 ---
 
+<div align="center">
+
 ## License
 
 [MIT License](LICENSE)
 
----
-
 ## Links
 
-- [GitHub Releases](https://github.com/KatoJunta/DelayDeck/releases)
-- [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues)
-- [X (@KatoJunta)](https://x.com/KatoJunta)
-- [日本語 README](README.md)
+[GitHub Releases](https://github.com/KatoJunta/DelayDeck/releases)
+&nbsp;·&nbsp;
+[GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues)
+&nbsp;·&nbsp;
+[X (@KatoJunta)](https://x.com/KatoJunta)
+&nbsp;·&nbsp;
+[日本語 README](README.md)
+
+</div>
