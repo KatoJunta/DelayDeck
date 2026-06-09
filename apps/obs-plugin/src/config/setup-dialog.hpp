@@ -2,6 +2,7 @@
 
 #include <QDialog>
 
+class QComboBox;
 class QLineEdit;
 
 namespace delaydeck {
@@ -15,8 +16,12 @@ public:
 	bool applySettings();
 
 private:
+	void populatePlatformCombo();
+	void syncPlatformSelectionFromUrl();
+	void onPlatformChanged(int index);
 	void prefillFromObs();
 
+	QComboBox *platform_combo_;
 	QLineEdit *output_url_edit_;
 	QLineEdit *stream_key_edit_;
 };

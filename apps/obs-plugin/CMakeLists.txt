@@ -37,6 +37,8 @@ set(PLUGIN_SOURCES
     src/config/credential-store.hpp
     src/config/relay-destination-url.cpp
     src/config/relay-destination-url.hpp
+    src/config/relay-platform-presets.cpp
+    src/config/relay-platform-presets.hpp
     src/config/relay-settings.cpp
     src/config/relay-settings.hpp
     src/config/setup-dialog.cpp
