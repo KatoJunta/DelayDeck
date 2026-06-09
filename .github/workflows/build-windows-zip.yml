@@ -1,0 +1,119 @@
+name: Build Windows ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      obs_ref:
+        description: "OBS Studio git ref to build against"
+        required: true
+        default: "master"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-zip:
+    name: Build Windows x64 package
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      BUILD_TYPE: RelWithDebInfo
+      OBS_REF: ${{ github.event.inputs.obs_ref || 'master' }}
+
+    steps:
+      - name: Checkout DelayDeck
+        uses: actions/checkout@v4
+
+      - name: Checkout OBS Studio
+        uses: actions/checkout@v4
+        with:
+          repository: obsproject/obs-studio
+          ref: ${{ env.OBS_REF }}
+          path: external/obs-studio
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/relay-engine/go.mod
+          cache-dependency-path: apps/relay-engine/go.sum
+
+      - name: Cache OBS dependencies
+        uses: actions/cache@v4
+        with:
+          path: external/obs-studio/.deps
+          key: obs-deps-windows-x64-${{ env.OBS_REF }}-${{ hashFiles('external/obs-studio/cmake/windows/buildspec.cmake') }}
+          restore-keys: |
+            obs-deps-windows-x64-${{ env.OBS_REF }}-
+            obs-deps-windows-x64-
+
+      - name: Configure OBS Studio
+        working-directory: external/obs-studio
+        run: >
+          cmake --preset windows-x64
+          -DENABLE_BROWSER=OFF
+          -DENABLE_WEBRTC=OFF
+          -DENABLE_VLC=OFF
+          -DENABLE_AJA=OFF
+          -DENABLE_DECKLINK=OFF
+
+      - name: Build OBS libraries needed by the plugin
+        working-directory: external/obs-studio
+        run: cmake --build --preset windows-x64 --config $env:BUILD_TYPE --target libobs obs-frontend-api
+
+      - name: Build DelayDeck Relay
+        working-directory: apps/relay-engine
+        run: |
+          $relayOutDir = Join-Path $env:GITHUB_WORKSPACE "build\relay"
+          New-Item -ItemType Directory -Force -Path $relayOutDir | Out-Null
+          go build -trimpath -ldflags="-s -w" -o (Join-Path $relayOutDir "delaydeck-relay.exe") ./cmd/delaydeck-relay
+
+      - name: Build DelayDeck OBS plugin
+        run: >
+          .\scripts\dev\build-obs-plugin.ps1
+          -ObsStudioDir "$env:GITHUB_WORKSPACE\external\obs-studio"
+          -BuildDir "$env:GITHUB_WORKSPACE\build\obs-plugin"
+
+      - name: Stage OBS drag-and-drop package
+        id: package
+        run: |
+          $packageRoot = Join-Path $env:GITHUB_WORKSPACE "build\package"
+          $pluginDest = Join-Path $packageRoot "obs-plugins\64bit"
+          $localeDest = Join-Path $packageRoot "data\obs-plugins\delaydeck\locale"
+          $artifactDir = Join-Path $env:GITHUB_WORKSPACE "build\artifacts"
+
+          New-Item -ItemType Directory -Force -Path $pluginDest, $localeDest, $artifactDir | Out-Null
+
+          Copy-Item "$env:GITHUB_WORKSPACE\build\obs-plugin\$env:BUILD_TYPE\delaydeck.dll" (Join-Path $pluginDest "delaydeck.dll") -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\build\relay\delaydeck-relay.exe" (Join-Path $pluginDest "delaydeck-relay.exe") -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\apps\obs-plugin\data\locale\*.ini" $localeDest -Force
+
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME
+          } else {
+            $shortSha = $env:GITHUB_SHA.Substring(0, 7)
+            $version = "dev-$shortSha"
+          }
+
+          $zipName = "delaydeck-$version-windows-x64.zip"
+          $zipPath = Join-Path $artifactDir $zipName
+          Compress-Archive -Path "$packageRoot\*" -DestinationPath $zipPath -Force
+
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+
+          Get-ChildItem $packageRoot -Recurse | Select-Object FullName, Length
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zip_name }}
+          path: ${{ steps.package.outputs.zip_path }}
+          if-no-files-found: error
