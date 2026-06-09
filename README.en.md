@@ -1,5 +1,9 @@
 # DelayDeck
 
+<p align="center">
+  <img src="assets/DelayDeck_image.png" alt="DelayDeck dock UI" width="720">
+</p>
+
 [日本語 README](README.md)
 
 [![GitHub Stars](https://img.shields.io/github/stars/KatoJunta/DelayDeck?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/stargazers)
@@ -9,7 +13,7 @@
 
 **DelayDeck** is a plugin and Relay Engine that makes OBS Studio’s built-in stream delay more flexible to use.
 
-OBS’s default stream delay cannot be toggled mid-stream. That is awkward for low-latency competitive games, where viewers may see information before the streamer does. DelayDeck was built for that use case.
+OBS’s default stream delay cannot be toggled mid-stream. That is awkward for low-latency competitive games, where viewers may receive information before the streamer does. DelayDeck was built for that use case.
 
 ## Components
 
@@ -157,7 +161,7 @@ Register the viewer-facing destination in the DelayDeck dock’s **Configure Des
 
 ## Build from source (developers)
 
-For developers.
+For developers. If you installed DelayDeck using **Install from a release (for beginners · use pre-built files)**, skip this section.
 
 ### Prerequisites
 
@@ -243,6 +247,8 @@ This does not protect against malware or unauthorized access to your PC. Keep yo
 
 **There is some overhead, but OBS encoding is usually the larger cost.**
 
+DelayDeck is structured as follows:
+
 - **Video encoding** — still done by OBS
 - **Delay buffering and output timing** — done by Relay
 - **OBS → Relay** — localhost RTMP on the same machine (`127.0.0.1:9401`)
@@ -307,7 +313,7 @@ These items are **not implemented yet**. Priority and timing are TBD.
 | **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once |
 | **Long-run stability validation** | Real-world long-duration testing and publishing the results |
 
-Requests and contributions via Issues or [X (@KatoJunta)](https://x.com/KatoJunta) are welcome.
+Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/KatoJunta) are welcome.
 
 ---
 
@@ -315,10 +321,11 @@ Requests and contributions via Issues or [X (@KatoJunta)](https://x.com/KatoJunt
 
 [MIT License](LICENSE)
 
+---
+
 ## Links
 
 - [GitHub Releases](https://github.com/KatoJunta/DelayDeck/releases)
 - [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues)
 - [X (@KatoJunta)](https://x.com/KatoJunta)
-- [Operator controls (Japanese)](docs/operator-controls.md)
 - [日本語 README](README.md)
