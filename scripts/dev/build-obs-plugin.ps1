@@ -37,8 +37,16 @@ function Get-ObsPrefixPath {
     $prefixes = @(
         (Join-Path $obsBuildDir "libobs"),
         (Join-Path $obsBuildDir "frontend\api"),
+        (Join-Path $obsBuildDir "UI\obs-frontend-api"),
         (Join-Path $obsBuildDir "deps\w32-pthreads")
     )
+
+    foreach ($configName in @("libobsConfig.cmake", "obs-frontend-apiConfig.cmake")) {
+        Get-ChildItem -Path $obsBuildDir -Recurse -Filter $configName -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $prefixes += $_.DirectoryName
+            }
+    }
 
     $depsRoot = Join-Path $Root ".deps"
     if (Test-Path $depsRoot) {
@@ -47,7 +55,7 @@ function Get-ObsPrefixPath {
         }
     }
 
-    return ($prefixes -join ';')
+    return (($prefixes | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique) -join ';')
 }
 
 function Get-CMakeGenerator {
