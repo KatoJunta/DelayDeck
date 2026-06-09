@@ -37,6 +37,14 @@ obs_source_t *findSceneByName(const QString &name)
 	return matched;
 }
 
+bool isSlateTransitionState(const QString &state)
+{
+	return state == QStringLiteral("BUFFERING_TO_DELAY") ||
+	       state == QStringLiteral("SAFE_HOLD") ||
+	       state == QStringLiteral("RETURNING_TO_REALTIME") ||
+	       state == QStringLiteral("DUMPING");
+}
+
 } // namespace
 
 void SlateSceneController::setEnableSceneName(const QString &name)
@@ -53,6 +61,9 @@ void SlateSceneController::applyStatus(const RelayStatus &status)
 {
 	const SlateKind kind = kindForStatus(status);
 	if (kind == SlateKind::None) {
+		if (active_ && isSlateTransitionState(status.state)) {
+			return;
+		}
 		restoreIfOwned();
 		return;
 	}
@@ -86,13 +97,32 @@ QStringList SlateSceneController::sceneNames()
 SlateSceneController::SlateKind
 SlateSceneController::kindForStatus(const RelayStatus &status)
 {
+	if (status.state == QStringLiteral("BUFFERING_TO_DELAY")) {
+		return SlateKind::EnableDelay;
+	}
+	if (status.state == QStringLiteral("RETURNING_TO_REALTIME") ||
+	    status.state == QStringLiteral("DUMPING")) {
+		return SlateKind::ReturnLive;
+	}
+	if (status.state == QStringLiteral("REALTIME") ||
+	    status.state == QStringLiteral("DELAYED") ||
+	    status.state == QStringLiteral("INGESTING") ||
+	    status.state == QStringLiteral("READY") ||
+	    status.state == QStringLiteral("STARTING") ||
+	    status.state == QStringLiteral("STOPPED") ||
+	    status.state == QStringLiteral("ERROR")) {
+		return SlateKind::None;
+	}
+
 	if (status.slateMessage.isEmpty() || status.countdownSeconds <= 0) {
 		return SlateKind::None;
 	}
-	if (status.slateMessage.startsWith(QStringLiteral("Delay activating"))) {
+	if (status.slateMessage.startsWith(
+		    QStringLiteral("Getting ready to delay the stream"))) {
 		return SlateKind::EnableDelay;
 	}
-	if (status.slateMessage.startsWith(QStringLiteral("Returning to realtime"))) {
+	if (status.slateMessage.startsWith(QStringLiteral("Finishing delayed content")) ||
+	    status.slateMessage.startsWith(QStringLiteral("Switching back to live"))) {
 		return SlateKind::ReturnLive;
 	}
 	return SlateKind::None;

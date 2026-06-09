@@ -35,6 +35,11 @@ private:
 	static QString engineStatusText(RelayLinkState linkState,
 					RelayProcessState processState);
 	static QString operationLabel(const QString &operation);
+	static QString relayStateLabel(const QString &state);
+	static QString slateMessageLabel(const RelayStatus &status);
+	static QString transitionText(const RelayStatus &status);
+	static bool showsTransition(const RelayStatus &status);
+	bool canEditDelayTarget() const;
 
 	void applyHealth(const RelayHealth &health);
 	void applyStatus(const RelayStatus &status);
@@ -44,9 +49,15 @@ private:
 	void applyRequestFailed(const QString &operation, const QString &detail);
 	void updateButtonStates();
 	void updateProcessDisplay();
+	void updateSummaryLabel();
+	void updateTransitionDisplay(const RelayStatus &status);
+	void showError(const QString &text);
+	void clearError();
 	void startRelayClient();
 	void updatePreflightDisplay(const PreflightResult &result);
 	void refreshSceneSelectors();
+	void resetSummaryLabel();
+	void onAdvancedToggled(bool visible);
 
 	void onEnableDelayClicked();
 	void onReturnLiveClicked();
@@ -58,21 +69,12 @@ private:
 	RelayProcess *relay_process_;
 	RelayClient *relay_client_;
 
-	QLabel *engine_status_label_;
-	QLabel *process_id_label_;
-	QLabel *health_label_;
-	QLabel *state_label_;
-	QLabel *target_delay_label_;
-	QLabel *active_delay_label_;
-	QLabel *buffer_label_;
-	QLabel *input_label_;
-	QLabel *output_label_;
-	QLabel *slate_label_;
-	QLabel *countdown_label_;
-	QLabel *last_error_label_;
-	QLabel *request_error_label_;
-	QLabel *preflight_label_;
+	QLabel *summary_label_;
+	QLabel *transition_label_;
+	QLabel *error_label_;
 
+	QWidget *advanced_panel_;
+	QPushButton *advanced_toggle_button_;
 	QSpinBox *target_delay_spin_;
 	QComboBox *enable_slate_scene_combo_;
 	QComboBox *return_slate_scene_combo_;
@@ -85,5 +87,7 @@ private:
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;
 	RelayProcessState process_state_ = RelayProcessState::Idle;
 	QString relay_state_;
-	PreflightResult last_preflight_result_;
+	bool transition_pending_ = false;
+	int active_delay_seconds_ = 0;
+	PreflightResult last_preflight_result_{true, PreflightFailureCode::None, {}};
 };

@@ -73,7 +73,7 @@ func seedEmitter(t *testing.T, emitter *slate.Emitter) {
 func TestEmitterBootstrapAndContinuing(t *testing.T) {
 	emitter := slate.NewEmitter()
 	seedEmitter(t, emitter)
-	emitter.SetDisplay("Delay activating, 30 seconds remaining", 30)
+	emitter.SetDisplay("Getting ready to delay the stream — 30 seconds left", 30)
 
 	if !emitter.Ready() {
 		t.Fatal("expected emitter to be ready")
@@ -109,7 +109,7 @@ func TestBootstrapOmitsSequenceHeadersAndKeepsAACPayloadValid(t *testing.T) {
 		},
 	})
 	seedEmitter(t, emitter)
-	emitter.SetDisplay("Returning to realtime", 3)
+	emitter.SetDisplay("Switching back to live", 3)
 
 	writer := &recordingWriter{}
 	timeline := &advancingTimeline{video: 1000, audio: 1000}
@@ -132,7 +132,7 @@ func TestBootstrapOmitsSequenceHeadersAndKeepsAACPayloadValid(t *testing.T) {
 func TestResetConcurrentWithEmitDoesNotPanic(t *testing.T) {
 	emitter := slate.NewEmitter()
 	seedEmitter(t, emitter)
-	emitter.SetDisplay("Returning to realtime", 2)
+	emitter.SetDisplay("Switching back to live", 2)
 
 	writer := &recordingWriter{}
 	timeline := &advancingTimeline{}

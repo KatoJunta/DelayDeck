@@ -10,9 +10,9 @@ const (
 )
 
 const (
-	SlateEnableDelayFmt    = "Delay activating, %d seconds remaining"
-	SlateDrainingBufferFmt = "Playing buffered content, %d seconds remaining"
-	SlateReturningLive     = "Returning to realtime"
+	SlateEnableDelayFmt    = "Getting ready to delay the stream — %d seconds left"
+	SlateDrainingBufferFmt = "Finishing delayed content — %d seconds left"
+	SlateReturningLive     = "Switching back to live"
 	ReturnLiveSlateSeconds = 3
 	DumpSlateSeconds       = 3
 )
