@@ -8,7 +8,7 @@
 
 <img src="assets/DelayDeck_image.png" alt="DelayDeck の Dock UI" width="720">
 
-<sub>DelayDeck Dock — 遅延操作・状態表示・配信先設定</sub>
+<sub>DelayDeck Dock — 遅延操作・状態表示・配信先設定 · <a href="https://x.com/KatoJunta/status/2064341479984947235">デモ動画（画面録画）</a></sub>
 
 <br>
 
@@ -24,6 +24,8 @@
 <br>
 
 [**Download**](https://github.com/KatoJunta/DelayDeck/releases)
+&nbsp;·&nbsp;
+<a href="https://x.com/KatoJunta/status/2064341479984947235">デモ</a>
 &nbsp;·&nbsp;
 <a href="#install">導入（ZIP）</a>
 &nbsp;·&nbsp;

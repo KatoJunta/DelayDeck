@@ -8,7 +8,7 @@
 
 <img src="assets/DelayDeck_image.png" alt="DelayDeck dock UI" width="720">
 
-<sub>DelayDeck Dock — delay controls, status, and destination setup</sub>
+<sub>DelayDeck Dock — delay controls, status, and destination setup · <a href="https://x.com/KatoJunta/status/2064341479984947235">Demo video (screen recording)</a></sub>
 
 <br>
 
@@ -24,6 +24,8 @@
 <br>
 
 [**Download**](https://github.com/KatoJunta/DelayDeck/releases)
+&nbsp;·&nbsp;
+<a href="https://x.com/KatoJunta/status/2064341479984947235">Demo</a>
 &nbsp;·&nbsp;
 <a href="#install">Install (ZIP)</a>
 &nbsp;·&nbsp;
