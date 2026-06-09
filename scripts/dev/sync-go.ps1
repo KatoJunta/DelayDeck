@@ -23,18 +23,20 @@ if ($goWorkLine -notmatch '^\s*go\s+(\d+\.\d+(?:\.\d+)?)\s*$') {
 }
 
 $goVersion = $Matches[1]
-$goModContent = Get-Content $goModFile -Raw
-$updatedGoMod = [regex]::Replace(
-    $goModContent,
-    '(?m)^go\s+\d+\.\d+(?:\.\d+)?\s*$',
-    "go $goVersion",
-    1
-)
+$goModLines = @(Get-Content $goModFile)
+$updated = $false
+for ($i = 0; $i -lt $goModLines.Count; $i++) {
+    if ($goModLines[$i] -match '^\s*go\s+\d+\.\d+(?:\.\d+)?\s*$') {
+        $goModLines[$i] = "go $goVersion"
+        $updated = $true
+        break
+    }
+}
 
-if ($updatedGoMod -eq $goModContent) {
+if (-not $updated) {
     Write-Error "go.mod does not contain a 'go <version>' line to update"
 }
 
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($goModFile, $updatedGoMod.TrimEnd() + "`n", $utf8NoBom)
+[System.IO.File]::WriteAllText($goModFile, ($goModLines -join "`n") + "`n", $utf8NoBom)
 Write-Host "Synced Go toolchain: $goVersion -> $goModFile"
