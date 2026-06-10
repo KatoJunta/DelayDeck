@@ -122,6 +122,10 @@ func (r *Ring) DropUntilVideoKeyframe() int {
 }
 
 func (r *Ring) ActiveKeyframeDelaySeconds(now time.Time, targetSeconds int) int {
+	return int(r.ActiveKeyframeDelayDuration(now, targetSeconds).Seconds())
+}
+
+func (r *Ring) ActiveKeyframeDelayDuration(now time.Time, targetSeconds int) time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if targetSeconds <= 0 {
@@ -132,12 +136,13 @@ func (r *Ring) ActiveKeyframeDelaySeconds(now time.Time, targetSeconds int) int 
 		if !isVideoKeyframe(frame) {
 			continue
 		}
-		elapsed := int(now.Sub(frame.EnqueuedAt).Seconds())
+		elapsed := now.Sub(frame.EnqueuedAt)
 		if elapsed < 0 {
 			return 0
 		}
-		if elapsed > targetSeconds {
-			return targetSeconds
+		target := time.Duration(targetSeconds) * time.Second
+		if elapsed > target {
+			return target
 		}
 		return elapsed
 	}
@@ -145,20 +150,45 @@ func (r *Ring) ActiveKeyframeDelaySeconds(now time.Time, targetSeconds int) int 
 }
 
 func (r *Ring) ActiveDelaySeconds(now time.Time, targetSeconds int) int {
+	return int(r.ActiveDelayDuration(now, targetSeconds).Seconds())
+}
+
+func (r *Ring) ActiveDelayDuration(now time.Time, targetSeconds int) time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.entries) == 0 || targetSeconds <= 0 {
 		return 0
 	}
 
-	elapsed := int(now.Sub(r.entries[0].EnqueuedAt).Seconds())
+	elapsed := now.Sub(r.entries[0].EnqueuedAt)
 	if elapsed < 0 {
 		return 0
 	}
-	if elapsed > targetSeconds {
-		return targetSeconds
+	target := time.Duration(targetSeconds) * time.Second
+	if elapsed > target {
+		return target
 	}
 	return elapsed
+}
+
+// BufferSpanDuration returns the enqueue-time span covered by queued frames.
+// During 1x drain this tracks remaining buffered playback time more reliably
+// than wall-clock age of the oldest frame alone.
+func (r *Ring) BufferSpanDuration() time.Duration {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.entries) == 0 {
+		return 0
+	}
+	if len(r.entries) == 1 {
+		return 0
+	}
+
+	span := r.entries[len(r.entries)-1].EnqueuedAt.Sub(r.entries[0].EnqueuedAt)
+	if span < 0 {
+		return 0
+	}
+	return span
 }
 
 func isVideoKeyframe(frame media.Frame) bool {

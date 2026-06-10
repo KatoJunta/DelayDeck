@@ -24,6 +24,24 @@ import (
 	"github.com/KatoJunta/DelayDeck/apps/relay-engine/internal/state"
 )
 
+func countdownSecondsLeft(remaining time.Duration) int {
+	if remaining <= 0 {
+		return 0
+	}
+	return int((remaining + time.Second - time.Nanosecond) / time.Second)
+}
+
+func publishCountdown(
+	publish func(slate string, countdown int),
+	messageFmt string,
+	remaining int,
+) {
+	if remaining < 1 {
+		remaining = 1
+	}
+	publish(fmt.Sprintf(messageFmt, remaining), remaining)
+}
+
 type Pipeline struct {
 	machine *state.Machine
 
@@ -139,24 +157,29 @@ func (p *Pipeline) RunEnableDelayFill(targetSeconds int, publish func(slate stri
 	publish = p.wrapSlatePublish(publish)
 	p.controller.BeginSlateHold(true)
 
-	tick := time.NewTicker(500 * time.Millisecond)
+	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 
+	displayRemaining := targetSeconds + 1
 	for {
 		if p.isCancelled() {
 			return
 		}
 
-		active := p.controller.ActiveKeyframeDelaySeconds()
-		if active >= targetSeconds {
+		target := time.Duration(targetSeconds) * time.Second
+		active := p.controller.ActiveKeyframeDelayDuration()
+		if active >= target {
 			return
 		}
 
-		remaining := targetSeconds - active
-		if remaining < 1 {
-			remaining = 1
+		if displayRemaining > 1 {
+			displayRemaining--
 		}
-		publish(fmt.Sprintf(state.SlateEnableDelayFmt, remaining), remaining)
+		publishCountdown(
+			publish,
+			state.SlateEnableDelayFmt,
+			displayRemaining,
+		)
 
 		<-tick.C
 	}
@@ -193,9 +216,14 @@ func (p *Pipeline) RunReturnLiveDrain(publish func(slate string, countdown int))
 		return
 	}
 
-	tick := time.NewTicker(500 * time.Millisecond)
+	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 
+	displayRemaining := countdownSecondsLeft(p.controller.BufferSpanDuration())
+	if active := countdownSecondsLeft(p.controller.ActiveDelayDuration()); active > displayRemaining {
+		displayRemaining = active
+	}
+	displayRemaining++
 	for {
 		if p.isCancelled() {
 			return
@@ -205,11 +233,14 @@ func (p *Pipeline) RunReturnLiveDrain(publish func(slate string, countdown int))
 			return
 		}
 
-		active := p.controller.ActiveDelaySeconds()
-		if active < 1 {
-			active = 1
+		if displayRemaining > 1 {
+			displayRemaining--
 		}
-		publish(fmt.Sprintf(state.SlateDrainingBufferFmt, active), active)
+		publishCountdown(
+			publish,
+			state.SlateDrainingBufferFmt,
+			displayRemaining,
+		)
 
 		<-tick.C
 	}

@@ -63,8 +63,11 @@ private:
 	void applyRequestFailed(const QString &operation, const QString &detail);
 	void updateButtonStates();
 	void updateProcessDisplay();
-	void updateSummaryLabel();
+	void updateSummaryLabel(const RelayStatus *status = nullptr);
 	void updateTransitionDisplay(const RelayStatus &status);
+	void syncTransitionCountdown(const RelayStatus &status);
+	void refreshTransitionLabel();
+	void tickTransitionCountdown();
 	void showError(const QString &text);
 	void clearError();
 	void startRelayClient();
@@ -114,10 +117,14 @@ private:
 	bool transition_pending_ = false;
 	int active_delay_seconds_ = 0;
 	qint64 last_status_updated_at_ms_ = -1;
+	RelayStatus transition_status_;
+	int transition_countdown_seconds_ = 0;
+	QString transition_phase_key_;
 	bool start_with_delay_ = false;
 	bool auto_delay_triggered_ = false;
 	bool loading_settings_ = false;
 	bool setup_prompt_shown_ = false;
 	QTimer settings_save_timer_;
+	QTimer transition_countdown_timer_;
 	PreflightResult last_preflight_result_{true, PreflightFailureCode::None, {}};
 };

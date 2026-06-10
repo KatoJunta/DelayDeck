@@ -12,6 +12,13 @@ import (
 
 const drainTickInterval = 5 * time.Millisecond
 
+func countdownSecondsLeft(remaining time.Duration) int {
+	if remaining <= 0 {
+		return 0
+	}
+	return int((remaining + time.Second - time.Nanosecond) / time.Second)
+}
+
 type MetricsSink interface {
 	UpdateBufferMetrics(usedBytes int64, usagePercent float64, activeDelaySeconds int)
 }
@@ -101,9 +108,23 @@ func (s *Controller) ActiveDelaySeconds() int {
 	return s.ring.ActiveDelaySeconds(now, s.TargetDelaySeconds())
 }
 
+func (s *Controller) ActiveDelayDuration() time.Duration {
+	now := time.Now().UTC()
+	return s.ring.ActiveDelayDuration(now, s.TargetDelaySeconds())
+}
+
 func (s *Controller) ActiveKeyframeDelaySeconds() int {
 	now := time.Now().UTC()
 	return s.ring.ActiveKeyframeDelaySeconds(now, s.TargetDelaySeconds())
+}
+
+func (s *Controller) ActiveKeyframeDelayDuration() time.Duration {
+	now := time.Now().UTC()
+	return s.ring.ActiveKeyframeDelayDuration(now, s.TargetDelaySeconds())
+}
+
+func (s *Controller) BufferSpanDuration() time.Duration {
+	return s.ring.BufferSpanDuration()
 }
 
 func (s *Controller) RingLen() int {
@@ -375,9 +396,19 @@ func (s *Controller) publishMetrics() {
 		return
 	}
 	now := time.Now().UTC()
+	targetSeconds := s.TargetDelaySeconds()
+	activeSeconds := s.ring.ActiveDelaySeconds(now, targetSeconds)
+
+	s.mu.Lock()
+	policy := s.policy
+	s.mu.Unlock()
+	if policy == OutputDrainAtLive {
+		activeSeconds = countdownSecondsLeft(s.ring.BufferSpanDuration())
+	}
+
 	s.metrics.UpdateBufferMetrics(
 		s.ring.UsedBytes(),
 		s.ring.UsagePercent(),
-		s.ring.ActiveDelaySeconds(now, s.TargetDelaySeconds()),
+		activeSeconds,
 	)
 }

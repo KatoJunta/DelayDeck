@@ -5,9 +5,13 @@
 #
 # Custom OBS prefix:
 #   .\scripts\dev\install-obs-plugin.ps1 -ObsPrefix "I:\dev\obs-studio\build_x64\rundir\RelWithDebInfo"
+#
+# Skip relay rebuild (copy existing delaydeck-relay.exe only):
+#   .\scripts\dev\install-obs-plugin.ps1 -SkipRelayBuild
 
 param(
-    [string]$ObsPrefix = "C:\Program Files\obs-studio"
+    [string]$ObsPrefix = "C:\Program Files\obs-studio",
+    [switch]$SkipRelayBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,12 +26,12 @@ if (-not (Test-Path $dllSrc)) {
     Write-Error "Plugin DLL not found. Build first: .\scripts\dev\build-obs-plugin.ps1 -ObsStudioDir <path>"
 }
 
-if (-not (Test-Path $relaySrc)) {
+if (-not $SkipRelayBuild) {
     Write-Host "Building delaydeck-relay: $relaySrc"
     & (Join-Path $repoRoot "scripts\dev\sync-repo.ps1")
     Push-Location $relayDir
     try {
-        go build -o $relaySrc ./cmd/delaydeck-relay
+        go build -trimpath -ldflags="-s -w" -o $relaySrc ./cmd/delaydeck-relay
         if ($LASTEXITCODE -ne 0) {
             Write-Error "go build failed (exit $LASTEXITCODE)"
         }
@@ -35,6 +39,8 @@ if (-not (Test-Path $relaySrc)) {
     finally {
         Pop-Location
     }
+} elseif (-not (Test-Path $relaySrc)) {
+    Write-Error "delaydeck-relay.exe not found. Build first or run without -SkipRelayBuild."
 }
 
 if (-not (Test-Path $localeSrc)) {

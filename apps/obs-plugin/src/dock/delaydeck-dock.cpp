@@ -115,6 +115,11 @@ void selectComboItem(QComboBox *combo, const QString &value)
 	combo->setCurrentIndex(index >= 0 ? index : 0);
 }
 
+QString transitionPhaseKey(const RelayStatus &status)
+{
+	return status.state + QLatin1Char('|') + status.slateMessage;
+}
+
 } // namespace
 
 QString DelayDeckDock::engineStatusText(RelayLinkState linkState,
@@ -227,8 +232,12 @@ bool showsDelayValueForState(const QString &state, int activeDelaySeconds)
 
 bool DelayDeckDock::showsTransition(const RelayStatus &status)
 {
-	if (slateDisplayKind(status) != SlateDisplayKind::None) {
-		return true;
+	const SlateDisplayKind kind = slateDisplayKind(status);
+	if (kind == SlateDisplayKind::ReturningLive) {
+		return false;
+	}
+	if (kind != SlateDisplayKind::None) {
+		return status.countdownSeconds > 0;
 	}
 
 	return isTransitionState(status.state) && status.countdownSeconds > 0;
@@ -396,6 +405,10 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		obs_frontend_save();
 	});
 
+	transition_countdown_timer_.setInterval(1000);
+	connect(&transition_countdown_timer_, &QTimer::timeout, this,
+		&DelayDeckDock::tickTransitionCountdown);
+
 	applyDockSettings(30, false, true, {}, {});
 	resetSummaryLabel();
 	refreshSceneSelectors();
@@ -447,6 +460,7 @@ void DelayDeckDock::handleFrontendEvent(enum obs_frontend_event event)
 void DelayDeckDock::shutdown()
 {
 	settings_save_timer_.stop();
+	transition_countdown_timer_.stop();
 	obs_frontend_save();
 	StreamingGuard::uninstall();
 	slate_scene_controller_.clear();
@@ -503,8 +517,8 @@ void DelayDeckDock::applyStatus(const RelayStatus &status)
 	relay_state_ = status.state;
 	transition_pending_ = status.transitionPending;
 	active_delay_seconds_ = status.activeDelaySeconds;
-	updateSummaryLabel();
 	updateTransitionDisplay(status);
+	updateSummaryLabel(&status);
 
 	if (!status.lastError.isEmpty()) {
 		showError(status.lastError);
@@ -562,6 +576,10 @@ void DelayDeckDock::applyLinkState(RelayLinkState state)
 		transition_pending_ = false;
 		active_delay_seconds_ = 0;
 		last_status_updated_at_ms_ = -1;
+		transition_status_ = RelayStatus{};
+		transition_countdown_seconds_ = 0;
+		transition_phase_key_.clear();
+		transition_countdown_timer_.stop();
 		transition_label_->hide();
 		slate_scene_controller_.clear();
 	}
@@ -602,7 +620,7 @@ void DelayDeckDock::updateProcessDisplay()
 	updateSummaryLabel();
 }
 
-void DelayDeckDock::updateSummaryLabel()
+void DelayDeckDock::updateSummaryLabel(const RelayStatus *status)
 {
 	const QString engine = engineStatusText(link_state_, process_state_);
 	if (link_state_ != RelayLinkState::Connected) {
@@ -615,7 +633,15 @@ void DelayDeckDock::updateSummaryLabel()
 		mode = delaydeck::tr("Status.TransitionPending").arg(mode);
 	}
 
-	if (showsDelayValueForState(relay_state_, active_delay_seconds_)) {
+	const bool transitionCountdownActive =
+		transition_countdown_seconds_ > 0 &&
+		showsTransition(transition_status_);
+	const bool showDelayValue =
+		showsDelayValueForState(relay_state_, active_delay_seconds_) &&
+		!(status && showsTransition(*status) && status->countdownSeconds > 0) &&
+		!transitionCountdownActive;
+
+	if (showDelayValue) {
 		summary_label_->setText(
 			delaydeck::tr("Status.WithDelay")
 				.arg(engine, mode,
@@ -630,11 +656,54 @@ void DelayDeckDock::updateSummaryLabel()
 void DelayDeckDock::updateTransitionDisplay(const RelayStatus &status)
 {
 	if (!showsTransition(status)) {
+		transition_status_ = RelayStatus{};
+		transition_countdown_seconds_ = 0;
+		transition_phase_key_.clear();
+		transition_countdown_timer_.stop();
 		transition_label_->hide();
 		return;
 	}
 
-	const QString text = transitionText(status);
+	transition_status_ = status;
+	syncTransitionCountdown(status);
+	refreshTransitionLabel();
+}
+
+void DelayDeckDock::syncTransitionCountdown(const RelayStatus &status)
+{
+	if (status.countdownSeconds <= 0) {
+		transition_countdown_timer_.stop();
+		transition_countdown_seconds_ = 0;
+		return;
+	}
+
+	const QString phaseKey = transitionPhaseKey(status);
+	const bool newPhase = phaseKey != transition_phase_key_;
+	if (newPhase) {
+		transition_phase_key_ = phaseKey;
+		transition_countdown_seconds_ = status.countdownSeconds;
+	} else if (transition_countdown_seconds_ <= 0) {
+		transition_countdown_seconds_ = status.countdownSeconds;
+	} else if (status.countdownSeconds < transition_countdown_seconds_) {
+		transition_countdown_seconds_ = status.countdownSeconds;
+	}
+
+	if (!transition_countdown_timer_.isActive()) {
+		transition_countdown_timer_.start();
+	}
+}
+
+void DelayDeckDock::refreshTransitionLabel()
+{
+	if (!showsTransition(transition_status_) ||
+	    transition_countdown_seconds_ <= 0) {
+		transition_label_->hide();
+		return;
+	}
+
+	RelayStatus displayStatus = transition_status_;
+	displayStatus.countdownSeconds = transition_countdown_seconds_;
+	const QString text = transitionText(displayStatus);
 	if (text.isEmpty()) {
 		transition_label_->hide();
 		return;
@@ -642,6 +711,25 @@ void DelayDeckDock::updateTransitionDisplay(const RelayStatus &status)
 
 	transition_label_->setText(text);
 	transition_label_->show();
+}
+
+void DelayDeckDock::tickTransitionCountdown()
+{
+	if (!showsTransition(transition_status_) ||
+	    transition_countdown_seconds_ <= 0) {
+		transition_countdown_timer_.stop();
+		transition_label_->hide();
+		return;
+	}
+
+	transition_countdown_seconds_--;
+	if (transition_countdown_seconds_ <= 0) {
+		transition_countdown_timer_.stop();
+		transition_label_->hide();
+		return;
+	}
+
+	refreshTransitionLabel();
 }
 
 void DelayDeckDock::showError(const QString &text)
