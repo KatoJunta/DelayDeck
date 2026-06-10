@@ -25,15 +25,12 @@ func (h *EventHub) Publish(event state.ChangeEvent) {
 	defer h.mu.RUnlock()
 
 	for ch := range h.subscribers {
-		select {
-		case ch <- event:
-		default:
-		}
+		ch <- event
 	}
 }
 
 func (h *EventHub) Subscribe() (chan state.ChangeEvent, func()) {
-	ch := make(chan state.ChangeEvent, 16)
+	ch := make(chan state.ChangeEvent, 128)
 
 	h.mu.Lock()
 	h.subscribers[ch] = struct{}{}
