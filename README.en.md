@@ -383,28 +383,6 @@ The plugin DLL is linked against a specific OBS API version. If the `obs-XX.X.X`
 
 ---
 
-## How you can help
-
-As of v0.1.0, **long streams lasting several hours or more** have not been fully validated in our development environment.
-
-If you successfully stream for **about 2 hours or longer** with DelayDeck, please contact the developer.
-
-| Contact | Best for |
-| --- | --- |
-| [X (@KatoJunta)](https://x.com/KatoJunta) | Quick success reports |
-| [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues) | Detailed or public reports |
-
-The following details are helpful:
-
-- OBS Studio version
-- DelayDeck version (release name)
-- Stream duration, delay length, resolution/bitrate (whatever you know)
-- Whether everything worked, or what went wrong if it did not
-
-Reports will be used to improve stability and update release notes.
-
----
-
 <a id="roadmap"></a>
 
 ## Roadmap
@@ -416,7 +394,6 @@ These items are **not implemented yet**. Priority and timing are TBD.
 | **Linux support** | Build and distribute the OBS plugin and Relay Engine for Linux |
 | **macOS support** | Build and distribute the OBS plugin and Relay Engine for macOS |
 | **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once |
-| **Long-run stability validation** | Real-world long-duration testing and publishing the results |
 
 Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/KatoJunta) are welcome.
 
