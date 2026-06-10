@@ -323,6 +323,23 @@ If you notice issues, try reducing delay length or adjusting OBS encode settings
 </details>
 
 <details>
+<summary><strong>Does restarting Relay disconnect my stream?</strong></summary>
+
+<br>
+
+**Yes.** DelayDeck sends your stream to the platform through Relay. If Relay Engine stops—whether from a failure or from **Restart Engine** in the dock—forwarding to the platform stops as well, so viewers see a disconnect until Relay reconnects. Platforms such as Twitch may treat this as the end of your broadcast. This is expected by design.
+
+**If you stream to Twitch**, the following setting reduces visible dropouts while Relay comes back:
+
+1. Open the [Twitch Creator Dashboard](https://dashboard.twitch.tv/)
+2. Go to **Settings → Stream**
+3. Enable **Disconnect Protection**
+
+If you use Twitch, enabling this ahead of time is recommended. For YouTube and other platforms, check each service’s documentation for similar options.
+
+</details>
+
+<details>
 <summary><strong>Why does OBS stream to <code>rtmp://127.0.0.1:9401/live</code>?</strong></summary>
 
 <br>
