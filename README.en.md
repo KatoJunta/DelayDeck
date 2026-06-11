@@ -49,10 +49,10 @@ DelayDeck provides a way to **toggle delay on or off without stopping your strea
 
 DelayDeck consists of two parts:
 
-| Component | Role |
-| --- | --- |
+| Component                          | Role                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
 | **DelayDeck for OBS** (OBS plugin) | Dock UI inside OBS, Relay startup/monitoring, destination setup, preflight checks |
-| **DelayDeck Relay** (relay engine) | Ingest from OBS, delay buffer, output to your streaming platform |
+| **DelayDeck Relay** (relay engine) | Ingest from OBS, delay buffer, output to your streaming platform                  |
 
 In normal use, Relay starts automatically when OBS starts. You do not need to launch Relay manually.
 
@@ -65,21 +65,21 @@ flowchart LR
 
 ### ✨ Main features
 
-| Feature | Description |
-| --- | --- |
-| 🔄 **Delay on/off** | Switch between realtime and delayed streaming mid-broadcast |
-| 🖼️ **Slate scenes** | Viewer-facing screens during delay transitions and return-to-live |
-| ⏩ **Return to Live Now** | Discard unsent content and return to live (Dump Buffer, confirmation required) |
-| ✅ **Preflight checks** | Validate Relay, destination, and slate setup before going live |
-| 🎯 **Destination presets** | Quick RTMP setup for YouTube, Twitch, and other platforms |
+| Feature                    | Description                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| 🔄 **Delay on/off**        | Switch between realtime and delayed streaming mid-broadcast                    |
+| 🖼️ **Slate scenes**        | Viewer-facing screens during delay transitions and return-to-live              |
+| ⏩ **Return to Live Now**  | Discard unsent content and return to live (Dump Buffer, confirmation required) |
+| ✅ **Preflight checks**    | Validate Relay, destination, and slate setup before going live                 |
+| 🎯 **Destination presets** | Quick RTMP setup for YouTube, Twitch, and other platforms                      |
 
 ## 💻 Requirements
 
-| Item | Details |
-| --- | --- |
-| OS | Windows 10 / 11 (64-bit) |
-| OBS Studio | **30.2.3**, **31.1.2**, or **32.1.2** (each build targets a specific OBS version) |
-| Architecture | x64 |
+| Item         | Details                                                                           |
+| ------------ | --------------------------------------------------------------------------------- |
+| OS           | Windows 10 / 11 (64-bit)                                                          |
+| OBS Studio   | **30.2.3**, **31.1.2**, or **32.1.2** (each build targets a specific OBS version) |
+| Architecture | x64                                                                               |
 
 > [!WARNING]
 > The plugin may fail to load if your OBS version does not match the release build. **Always download the ZIP that matches your installed OBS version.**
@@ -156,8 +156,8 @@ Close OBS Studio before installing. Make sure it is not still running in the bac
 2. Click **Configure Destination** in the dock and save your viewer-facing RTMP URL and stream key.
 3. In advanced settings, choose **Enable slate scene** and **Return slate scene** (shown to viewers during transitions).
 
-   > [!WARNING]
-   > **Slate scene audio:** Do not include **microphone** or **desktop audio** (game audio, etc.) in the audio mixer for these two scenes. Realtime audio would reach viewers during transitions and defeat the purpose of delay. Setting up **BGM only** is fine.
+> [!WARNING]
+> **Slate scene audio:** Do not include **microphone** or **desktop audio** (game audio, etc.) in the audio mixer for these two scenes. Realtime audio would reach viewers during transitions and defeat the purpose of delay. Setting up **BGM only** is fine.
 
 4. If **Settings → Output → Stream Delay** is enabled in OBS, turn it **off**. DelayDeck cannot be used together with OBS built-in stream delay.
 
@@ -180,10 +180,10 @@ To verify or set OBS manually:
 
 OBS will then use:
 
-| Field | Value |
-| --- | --- |
-| Service | Custom… |
-| Server | `rtmp://127.0.0.1:9401/live` |
+| Field      | Value                            |
+| ---------- | -------------------------------- |
+| Service    | Custom…                          |
+| Server     | `rtmp://127.0.0.1:9401/live`     |
 | Stream key | `stream` (internal to DelayDeck) |
 
 The viewer-facing URL and stream key are stored on the Relay side. The localhost key shown in OBS is an internal value DelayDeck uses to hand off media to Relay.
@@ -305,11 +305,11 @@ This does not protect against malware or unauthorized access to your PC. Keep yo
 
 **There is some overhead, but OBS encoding is usually the larger cost.**
 
-| Task | Handled by |
-| --- | --- |
-| Video encoding | OBS (as before) |
-| Delay buffering and output timing | Relay |
-| OBS → Relay | localhost RTMP on the same machine (`127.0.0.1:9401`) |
+| Task                              | Handled by                                            |
+| --------------------------------- | ----------------------------------------------------- |
+| Video encoding                    | OBS (as before)                                       |
+| Delay buffering and output timing | Relay                                                 |
+| OBS → Relay                       | localhost RTMP on the same machine (`127.0.0.1:9401`) |
 
 Localhost forwarding uses little network bandwidth. Relay keeps delayed media in memory, so **longer delay uses more RAM**. CPU usage also scales with delay length.
 
@@ -393,11 +393,11 @@ The plugin DLL is linked against a specific OBS API version. If the `obs-XX.X.X`
 
 These items are **not implemented yet**. Priority and timing are TBD.
 
-| Item | Summary |
-| --- | --- |
-| 🐧 **Linux support** | Build and distribute the OBS plugin and Relay Engine for Linux |
-| 🍎 **macOS support** | Build and distribute the OBS plugin and Relay Engine for macOS |
-| 📡 **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once |
+| Item                       | Summary                                                        |
+| -------------------------- | -------------------------------------------------------------- |
+| 🐧 **Linux support**       | Build and distribute the OBS plugin and Relay Engine for Linux |
+| 🍎 **macOS support**       | Build and distribute the OBS plugin and Relay Engine for macOS |
+| 📡 **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once  |
 
 Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/KatoJunta) are welcome.
 
