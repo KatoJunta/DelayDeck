@@ -3,6 +3,7 @@
 #include "config/dock-settings.hpp"
 #include "config/relay-settings.hpp"
 #include "config/setup-dialog.hpp"
+#include "dock/about-dialog.hpp"
 #include "locale/tr.hpp"
 #include "preflight/preflight-checker.hpp"
 #include "preflight/preflight-dialog.hpp"
@@ -19,6 +20,7 @@
 #include <QMessageBox>
 #include <QSignalBlocker>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace {
@@ -297,10 +299,19 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	auto *layout = new QVBoxLayout(this);
 	layout->setSpacing(8);
 
+	auto *summary_row = new QHBoxLayout();
 	summary_label_ = new QLabel(this);
 	summary_label_->setWordWrap(true);
 	summary_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-	layout->addWidget(summary_label_);
+	summary_row->addWidget(summary_label_, 1);
+
+	help_button_ = new QToolButton(this);
+	help_button_->setText(QStringLiteral("?"));
+	help_button_->setAutoRaise(true);
+	help_button_->setToolTip(delaydeck::tr("Tooltip.Help"));
+	help_button_->setAccessibleName(delaydeck::tr("About.Title"));
+	summary_row->addWidget(help_button_, 0, Qt::AlignTop);
+	layout->addLayout(summary_row);
 
 	transition_label_ = new QLabel(this);
 	transition_label_->setWordWrap(true);
@@ -308,23 +319,34 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	layout->addWidget(transition_label_);
 
 	auto *control_row = new QHBoxLayout();
+	auto *target_delay_label =
+		new QLabel(delaydeck::tr("Label.TargetDelay"), this);
+	control_row->addWidget(target_delay_label);
 	target_delay_spin_ = new QSpinBox(this);
 	target_delay_spin_->setRange(1, 600);
 	target_delay_spin_->setValue(30);
 	target_delay_spin_->setSuffix(delaydeck::tr("Value.DelaySuffix"));
+	target_delay_spin_->setToolTip(delaydeck::tr("Tooltip.TargetDelay"));
+	target_delay_label->setBuddy(target_delay_spin_);
 	control_row->addWidget(target_delay_spin_);
 	delay_toggle_ = new QCheckBox(delaydeck::tr("Toggle.DelayStream"), this);
+	delay_toggle_->setToolTip(delaydeck::tr("Tooltip.DelayToggle"));
 	control_row->addWidget(delay_toggle_);
+	control_row->addStretch();
 	layout->addLayout(control_row);
 
 	dump_buffer_button_ = new QPushButton(delaydeck::tr("Button.DumpBuffer"), this);
+	dump_buffer_button_->setToolTip(delaydeck::tr("Tooltip.DumpBuffer"));
 	layout->addWidget(dump_buffer_button_);
 
 	restart_relay_button_ = new QPushButton(delaydeck::tr("Button.RestartRelay"), this);
+	restart_relay_button_->setToolTip(delaydeck::tr("Tooltip.RestartRelay"));
 	layout->addWidget(restart_relay_button_);
 
 	setup_destination_button_ =
 		new QPushButton(delaydeck::tr("Button.SetupDestination"), this);
+	setup_destination_button_->setToolTip(
+		delaydeck::tr("Tooltip.SetupDestination"));
 	layout->addWidget(setup_destination_button_);
 
 	advanced_toggle_button_ = new QPushButton(delaydeck::tr("Section.ShowAdvanced"), this);
@@ -340,7 +362,11 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	auto *scene_grid = new QGridLayout();
 	scene_grid->setColumnStretch(1, 1);
 	enable_slate_scene_combo_ = new QComboBox(advanced_panel_);
+	enable_slate_scene_combo_->setToolTip(
+		delaydeck::tr("Tooltip.EnableSlateScene"));
 	return_slate_scene_combo_ = new QComboBox(advanced_panel_);
+	return_slate_scene_combo_->setToolTip(
+		delaydeck::tr("Tooltip.ReturnSlateScene"));
 	scene_grid->addWidget(new QLabel(delaydeck::tr("Label.EnableSlateScene"), advanced_panel_),
 			      0, 0);
 	scene_grid->addWidget(enable_slate_scene_combo_, 0, 1);
@@ -390,6 +416,8 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		&DelayDeckDock::onRestartRelayClicked);
 	connect(setup_destination_button_, &QPushButton::clicked, this,
 		&DelayDeckDock::openSetupDialog);
+	connect(help_button_, &QToolButton::clicked, this,
+		&DelayDeckDock::openAboutDialog);
 	connect(advanced_toggle_button_, &QPushButton::toggled, this,
 		&DelayDeckDock::onAdvancedToggled);
 	connect(target_delay_spin_, qOverload<int>(&QSpinBox::valueChanged), this,
@@ -1161,6 +1189,12 @@ void DelayDeckDock::openSetupDialog()
 	if (relay_process_->isManaged()) {
 		relay_process_->restartRelay();
 	}
+}
+
+void DelayDeckDock::openAboutDialog()
+{
+	delaydeck::AboutDialog dialog(this);
+	dialog.exec();
 }
 
 void DelayDeckDock::maybePromptSetup()

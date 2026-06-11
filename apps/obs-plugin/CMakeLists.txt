@@ -43,6 +43,8 @@ set(PLUGIN_SOURCES
     src/config/relay-settings.hpp
     src/config/setup-dialog.cpp
     src/config/setup-dialog.hpp
+    src/dock/about-dialog.cpp
+    src/dock/about-dialog.hpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
     src/obs/slate-scene-controller.cpp

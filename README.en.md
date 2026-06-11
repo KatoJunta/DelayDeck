@@ -105,15 +105,15 @@ Step-by-step guide for users who are less familiar with PC tasks.
 ### 2. Download the ZIP from GitHub Releases
 
 1. Open [GitHub Releases](https://github.com/KatoJunta/DelayDeck/releases).
-2. Pick the release you want (e.g. `v0.1.0`).
+2. Pick the release you want (e.g. `v1.0.0`).
 3. Download the ZIP for your OBS version.
 
 Example file names:
 
 ```text
-delaydeck-v0.1.0-obs-32.1.2-windows-x64.zip
-delaydeck-v0.1.0-obs-31.1.2-windows-x64.zip
-delaydeck-v0.1.0-obs-30.2.3-windows-x64.zip
+delaydeck-v1.0.0-obs-32.1.2-windows-x64.zip
+delaydeck-v1.0.0-obs-31.1.2-windows-x64.zip
+delaydeck-v1.0.0-obs-30.2.3-windows-x64.zip
 ```
 
 The segment after `obs-` is the OBS version. Verify the SHA256 checksum on the release page if one is provided.

@@ -16,6 +16,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTimer>
+#include <QToolButton>
 #include <QWidget>
 
 class DelayDeckDock final : public QWidget {
@@ -86,6 +87,7 @@ private:
 	void onReturnSlateSceneChanged();
 	void scheduleSettingsSave();
 	void openSetupDialog();
+	void openAboutDialog();
 	void maybePromptSetup();
 	void notifyObsStopDiscardedDelay();
 	void applyDockSettings(int targetDelaySeconds, bool delayStream,
@@ -109,6 +111,7 @@ private:
 	QPushButton *dump_buffer_button_;
 	QPushButton *restart_relay_button_;
 	QPushButton *setup_destination_button_;
+	QToolButton *help_button_;
 
 	SlateSceneController slate_scene_controller_;
 	RelayLinkState link_state_ = RelayLinkState::Disconnected;

@@ -14,7 +14,7 @@ on:
           - "31.1.2"
           - "30.2.3"
       version:
-        description: "Release tag (example: v0.1.0). Empty uses VERSION file."
+        description: "Release tag (example: v1.0.0). Empty uses VERSION file."
         required: false
         default: ""
       publish_release:

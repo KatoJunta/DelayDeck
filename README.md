@@ -105,15 +105,15 @@ macOS / Linux 向けの配布物は、現時点では提供していません。
 ### 2. Release から ZIP をダウンロードする
 
 1. ブラウザで [GitHub Releases](https://github.com/KatoJunta/DelayDeck/releases) を開きます。
-2. 使いたいバージョン（例: `v0.1.0`）の Release を選びます。
+2. 使いたいバージョン（例: `v1.0.0`）の Release を選びます。
 3. 自分の OBS バージョンに合った ZIP をダウンロードします。
 
 ファイル名の例:
 
 ```text
-delaydeck-v0.1.0-obs-32.1.2-windows-x64.zip
-delaydeck-v0.1.0-obs-31.1.2-windows-x64.zip
-delaydeck-v0.1.0-obs-30.2.3-windows-x64.zip
+delaydeck-v1.0.0-obs-32.1.2-windows-x64.zip
+delaydeck-v1.0.0-obs-31.1.2-windows-x64.zip
+delaydeck-v1.0.0-obs-30.2.3-windows-x64.zip
 ```
 
 `obs-` の後ろが OBS のバージョンです。Release ページに SHA256 が表示されている場合は、ダウンロード後に照合してください。

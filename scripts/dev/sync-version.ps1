@@ -15,7 +15,7 @@ if (-not (Test-Path $versionFile)) {
 
 $version = (Get-Content $versionFile -Raw).Trim()
 if ($version -notmatch '^\d+\.\d+\.\d+$') {
-    Write-Error "VERSION must be major.minor.patch (example: 0.1.0). Got: $version"
+    Write-Error "VERSION must be major.minor.patch (example: 1.0.0). Got: $version"
 }
 
 $content = @"
