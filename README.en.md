@@ -2,7 +2,7 @@
 
 # DelayDeck
 
-**Dynamic stream delay for OBS Studio — toggled while you are live**
+**An OBS Studio plugin that toggles stream delay on and off while you are live**
 
 <br>
 
@@ -25,7 +25,7 @@
 
 [**Download**](https://github.com/KatoJunta/DelayDeck/releases)
 &nbsp;·&nbsp;
-<a href="https://x.com/KatoJunta/status/2064341479984947235">Demo</a>
+<a href="https://x.com/KatoJunta/status/2064341479984947235">Demo video</a>
 &nbsp;·&nbsp;
 <a href="#install">Install (ZIP)</a>
 &nbsp;·&nbsp;
@@ -41,11 +41,11 @@
 
 **DelayDeck** is a plugin and Relay Engine that makes OBS Studio’s built-in stream delay more flexible to use.
 
-When streaming real-time competitive games with no broadcast delay, viewers may receive information before the streamer does, putting the streamer at a disadvantage. OBS’s built-in stream delay cannot be toggled on or off during a stream, so streamers had to choose between prioritizing in-game performance or engaging with their audience.
+When streaming real-time competitive games with no broadcast delay, streamers can be put at a disadvantage by malicious stream snipers and people attempting to ghost. OBS’s built-in stream delay cannot be toggled on or off during a stream, so streamers had to choose between prioritizing in-game performance or engaging with their audience.
 
-DelayDeck was built so you can **toggle delay on or off without stopping your stream**—helping you enjoy both the game and interaction with your viewers.
+DelayDeck provides a way to **toggle delay on or off without stopping your stream**, so you can enjoy both the game and interaction with your viewers.
 
-## Components
+## 🧩 Components
 
 DelayDeck consists of two parts:
 
@@ -56,23 +56,24 @@ DelayDeck consists of two parts:
 
 In normal use, Relay starts automatically when OBS starts. You do not need to launch Relay manually.
 
-```text
-OBS (encode) → local Relay (delay control) → YouTube / Twitch / etc.
-        ↑
-  DelayDeck Dock (controls & status)
+```mermaid
+flowchart LR
+  OBS["OBS (encode)"] --> Relay["Local Relay (delay control)"]
+  Relay --> Platform["YouTube / Twitch / etc."]
+  Dock["DelayDeck Dock (controls & status)"] -.-> Relay
 ```
 
-### Main features
+### ✨ Main features
 
 | Feature | Description |
 | --- | --- |
-| **Delay on/off** | Switch between realtime and delayed streaming mid-broadcast |
-| **Slate scenes** | Viewer-facing screens during delay transitions and return-to-live |
-| **Return to Live Now** | Discard unsent content and return to live (Dump Buffer, confirmation required) |
-| **Preflight checks** | Validate Relay, destination, and slate setup before going live |
-| **Destination presets** | Quick RTMP setup for YouTube, Twitch, and other platforms |
+| 🔄 **Delay on/off** | Switch between realtime and delayed streaming mid-broadcast |
+| 🖼️ **Slate scenes** | Viewer-facing screens during delay transitions and return-to-live |
+| ⏩ **Return to Live Now** | Discard unsent content and return to live (Dump Buffer, confirmation required) |
+| ✅ **Preflight checks** | Validate Relay, destination, and slate setup before going live |
+| 🎯 **Destination presets** | Quick RTMP setup for YouTube, Twitch, and other platforms |
 
-## Requirements
+## 💻 Requirements
 
 | Item | Details |
 | --- | --- |
@@ -80,7 +81,8 @@ OBS (encode) → local Relay (delay control) → YouTube / Twitch / etc.
 | OBS Studio | **30.2.3**, **31.1.2**, or **32.1.2** (each build targets a specific OBS version) |
 | Architecture | x64 |
 
-> **Note:** The plugin may fail to load if your OBS version does not match the release build. **Always download the ZIP that matches your installed OBS version.**
+> [!WARNING]
+> The plugin may fail to load if your OBS version does not match the release build. **Always download the ZIP that matches your installed OBS version.**
 
 After a new OBS major release, matching builds may take manual work. If the version you need is not on the Releases page, contact us on [X (@KatoJunta)](https://x.com/KatoJunta) or via [GitHub Issues](https://github.com/KatoJunta/DelayDeck/issues).
 
@@ -90,7 +92,7 @@ macOS and Linux packages are not available at this time.
 
 <a id="install"></a>
 
-## Install from a release (for beginners · use pre-built files)
+## 📦 Install from a release (for beginners · use pre-built files)
 
 Step-by-step guide for users who are less familiar with PC tasks.
 
@@ -100,7 +102,8 @@ Step-by-step guide for users who are less familiar with PC tasks.
 2. Go to **Help → About OBS Studio**.
 3. Note the version number (e.g. `32.1.2`).
 
-> **Important:** Download the ZIP that matches your OBS version. A mismatched build may fail to load.
+> [!IMPORTANT]
+> Download the ZIP that matches your OBS version. A mismatched build may fail to load.
 
 ### 2. Download the ZIP from GitHub Releases
 
@@ -143,7 +146,6 @@ Close OBS Studio before installing. Make sure it is not still running in the bac
    If you get a permission error under `Program Files`, run File Explorer **as Administrator** and try again.
 
 4. Confirm these files exist:
-
    - `C:\Program Files\obs-studio\obs-plugins\64bit\delaydeck.dll`
    - `C:\Program Files\obs-studio\obs-plugins\64bit\delaydeck-relay.exe`
    - `C:\Program Files\obs-studio\data\obs-plugins\delaydeck\locale\en-US.ini`
@@ -154,15 +156,17 @@ Close OBS Studio before installing. Make sure it is not still running in the bac
 2. Click **Configure Destination** in the dock and save your viewer-facing RTMP URL and stream key.
 3. In advanced settings, choose **Enable slate scene** and **Return slate scene** (shown to viewers during transitions).
 
-   > **Important (slate scenes):** Do not include **microphone** or **desktop audio** (game audio, etc.) in the audio mixer for these two scenes. Realtime audio would reach viewers during transitions and defeat the purpose of delay. Setting up **BGM only** is fine.
+   > [!WARNING]
+   > **Slate scene audio:** Do not include **microphone** or **desktop audio** (game audio, etc.) in the audio mixer for these two scenes. Realtime audio would reach viewers during transitions and defeat the purpose of delay. Setting up **BGM only** is fine.
 
 4. If **Settings → Output → Stream Delay** is enabled in OBS, turn it **off**. DelayDeck cannot be used together with OBS built-in stream delay.
 
-> **Done:** Run a test stream before using DelayDeck on a live broadcast.
+> [!TIP]
+> Run a test stream before using DelayDeck on a live broadcast.
 
 ---
 
-## OBS setup
+## ⚙️ OBS setup
 
 In most cases, **Configure Destination** in the DelayDeck dock is enough. Saving there switches OBS to the DelayDeck relay automatically.
 
@@ -198,7 +202,7 @@ Register the viewer-facing destination in the DelayDeck dock’s **Configure Des
 
 <a id="build"></a>
 
-## Build from source (developers)
+## 🛠️ Build from source (developers)
 
 For developers. If you installed DelayDeck using **Install from a release (for beginners · use pre-built files)**, skip this section.
 
@@ -259,7 +263,7 @@ Pushing a `v*` tag triggers GitHub Actions to build release ZIPs. You can also r
 
 <a id="faq"></a>
 
-## FAQ
+## ❓ FAQ
 
 <details>
 <summary><strong>I entered a stream key, but it does not show up in the settings dialog. Was it saved?</strong></summary>
@@ -329,7 +333,7 @@ If you notice issues, try reducing delay length or adjusting OBS encode settings
 
 **Yes.** DelayDeck sends your stream to the platform through Relay. If Relay Engine stops—whether from a failure or from **Restart Engine** in the dock—forwarding to the platform stops as well, so viewers see a disconnect until Relay reconnects. Platforms such as Twitch may treat this as the end of your broadcast. This is expected by design.
 
-**If you stream to Twitch**, the following setting reduces visible dropouts while Relay comes back:
+**If you stream to Twitch**, the following setting keeps your broadcast from being cut off during the short disconnect while Relay comes back:
 
 1. Open the [Twitch Creator Dashboard](https://dashboard.twitch.tv/)
 2. Go to **Settings → Stream**
@@ -385,15 +389,15 @@ The plugin DLL is linked against a specific OBS API version. If the `obs-XX.X.X`
 
 <a id="roadmap"></a>
 
-## Roadmap
+## 🗺️ Roadmap
 
 These items are **not implemented yet**. Priority and timing are TBD.
 
 | Item | Summary |
 | --- | --- |
-| **Linux support** | Build and distribute the OBS plugin and Relay Engine for Linux |
-| **macOS support** | Build and distribute the OBS plugin and Relay Engine for macOS |
-| **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once |
+| 🐧 **Linux support** | Build and distribute the OBS plugin and Relay Engine for Linux |
+| 🍎 **macOS support** | Build and distribute the OBS plugin and Relay Engine for macOS |
+| 📡 **Multi-stream output** | Send one Relay ingest to multiple streaming platforms at once |
 
 Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/KatoJunta) are welcome.
 
