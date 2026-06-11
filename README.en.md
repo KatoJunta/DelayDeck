@@ -58,9 +58,13 @@ In normal use, Relay starts automatically when OBS starts. You do not need to la
 
 ```mermaid
 flowchart LR
-  OBS["OBS (encode)"] --> Relay["Local Relay (delay control)"]
+  subgraph OBS["OBS Studio"]
+    Encode["Encode & stream output"]
+    Dock["DelayDeck Dock (controls & status)"]
+  end
+  Encode --> Relay["Local Relay (delay control)"]
   Relay --> Platform["YouTube / Twitch / etc."]
-  Dock["DelayDeck Dock (controls & status)"] -.-> Relay
+  Dock -.-> Relay
 ```
 
 ### ✨ Main features

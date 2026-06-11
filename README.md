@@ -58,9 +58,13 @@ DelayDeck は 2 つのソフトウェアで動きます。
 
 ```mermaid
 flowchart LR
-  OBS["OBS（エンコード）"] --> Relay["ローカル Relay（遅延制御）"]
+  subgraph OBS["OBS Studio"]
+    Encode["エンコード・配信出力"]
+    Dock["DelayDeck Dock（操作・状態表示）"]
+  end
+  Encode --> Relay["ローカル Relay（遅延制御）"]
   Relay --> Platform["YouTube / Twitch など"]
-  Dock["DelayDeck Dock（操作・状態表示）"] -.-> Relay
+  Dock -.-> Relay
 ```
 
 ### ✨ 主な機能
