@@ -19,7 +19,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/KatoJunta/DelayDeck?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/stargazers)
 [![Latest Release](https://img.shields.io/github/v/release/KatoJunta/DelayDeck?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/releases/latest)
 [![Release Downloads](https://img.shields.io/github/downloads/KatoJunta/DelayDeck/total?style=flat-square&logo=github)](https://github.com/KatoJunta/DelayDeck/releases)
-[![License: GPL-2.0-or-later](https://img.shields.io/github/license/KatoJunta/DelayDeck?style=flat-square)](LICENSE)
+[![License: GPL-2.0](https://img.shields.io/github/license/KatoJunta/DelayDeck?style=flat-square)](LICENSE)
 
 <br>
 
@@ -411,7 +411,9 @@ Requests and contributions via GitHub Issues or [X (@KatoJunta)](https://x.com/K
 
 ## License
 
-[GNU General Public License v2.0 or later (GPL-2.0-or-later)](LICENSE)
+Copyright © 2026 [KatoJunta](https://github.com/KatoJunta)
+
+This project is licensed under the [GNU General Public License v2.0 (GPL-2.0)](LICENSE). See [LICENSE](LICENSE) for the full text.
 
 ## Links
 
