@@ -50,7 +50,6 @@ private:
 	QString resolveRelayBinary() const;
 	static QString generateSessionToken();
 	static QString listenAddressFromRelayUrl(const QString &relayUrl);
-	static QString pluginModuleDirectory();
 
 	bool managed_ = true;
 	bool intentional_stop_ = false;

@@ -47,6 +47,8 @@ set(PLUGIN_SOURCES
     src/dock/about-dialog.hpp
     src/dock/delaydeck-dock.cpp
     src/dock/delaydeck-dock.hpp
+    src/obs/obs-install-path.cpp
+    src/obs/obs-install-path.hpp
     src/obs/slate-scene-controller.cpp
     src/obs/slate-scene-controller.hpp
     src/obs/streaming-setup.cpp
@@ -58,6 +60,8 @@ set(PLUGIN_SOURCES
     src/relay/relay-event-socket.cpp
     src/relay/relay-event-socket.hpp
     src/relay/relay-types.hpp
+    src/util/github-release-checker.cpp
+    src/util/github-release-checker.hpp
     src/preflight/preflight-checker.cpp
     src/preflight/preflight-checker.hpp
     src/preflight/preflight-dialog.cpp
@@ -95,7 +99,7 @@ set_target_properties(delaydeck PROPERTIES
 if(WIN32)
   set(OBS_PLUGIN_DEST "obs-plugins/64bit")
   set(OBS_DATA_DEST "data/obs-plugins/delaydeck")
-  target_link_libraries(delaydeck PRIVATE advapi32 crypt32)
+  target_link_libraries(delaydeck PRIVATE advapi32 crypt32 winhttp)
 else()
   set(OBS_PLUGIN_DEST "lib/obs-plugins")
   set(OBS_DATA_DEST "share/obs/obs-plugins/delaydeck")

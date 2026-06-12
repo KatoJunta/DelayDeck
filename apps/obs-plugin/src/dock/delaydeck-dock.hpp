@@ -103,7 +103,7 @@ private:
 	QLabel *error_label_;
 
 	QWidget *advanced_panel_;
-	QPushButton *advanced_toggle_button_;
+	QToolButton *advanced_toggle_button_;
 	QSpinBox *target_delay_spin_;
 	QComboBox *enable_slate_scene_combo_;
 	QComboBox *return_slate_scene_combo_;

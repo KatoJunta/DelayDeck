@@ -14,6 +14,7 @@
 #include <obs.hpp>
 
 #include <QDialog>
+#include <QFrame>
 #include <QGridLayout>
 #include <QHash>
 #include <QHBoxLayout>
@@ -24,6 +25,14 @@
 #include <QVBoxLayout>
 
 namespace {
+
+QFrame *makeSeparator(QWidget *parent)
+{
+	auto *line = new QFrame(parent);
+	line->setFrameShape(QFrame::HLine);
+	line->setFrameShadow(QFrame::Sunken);
+	return line;
+}
 
 void populateSceneCombo(QComboBox *combo, const QStringList &sceneNames)
 {
@@ -299,10 +308,14 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	auto *layout = new QVBoxLayout(this);
 	layout->setSpacing(8);
 
+	// Status block: engine/state summary, transition progress, errors.
 	auto *summary_row = new QHBoxLayout();
 	summary_label_ = new QLabel(this);
 	summary_label_->setWordWrap(true);
 	summary_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	QFont summaryFont = summary_label_->font();
+	summaryFont.setBold(true);
+	summary_label_->setFont(summaryFont);
 	summary_row->addWidget(summary_label_, 1);
 
 	help_button_ = new QToolButton(this);
@@ -315,9 +328,20 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 
 	transition_label_ = new QLabel(this);
 	transition_label_->setWordWrap(true);
+	transition_label_->setStyleSheet(QStringLiteral("color: #2980b9;"));
 	transition_label_->hide();
 	layout->addWidget(transition_label_);
 
+	error_label_ = new QLabel(this);
+	error_label_->setWordWrap(true);
+	error_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	error_label_->setStyleSheet(QStringLiteral("color: #c0392b;"));
+	error_label_->hide();
+	layout->addWidget(error_label_);
+
+	layout->addWidget(makeSeparator(this));
+
+	// Delay controls: target delay, on/off toggle, and the dump action.
 	auto *control_row = new QHBoxLayout();
 	auto *target_delay_label =
 		new QLabel(delaydeck::tr("Label.TargetDelay"), this);
@@ -339,25 +363,35 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 	dump_buffer_button_->setToolTip(delaydeck::tr("Tooltip.DumpBuffer"));
 	layout->addWidget(dump_buffer_button_);
 
-	restart_relay_button_ = new QPushButton(delaydeck::tr("Button.RestartRelay"), this);
-	restart_relay_button_->setToolTip(delaydeck::tr("Tooltip.RestartRelay"));
-	layout->addWidget(restart_relay_button_);
+	layout->addWidget(makeSeparator(this));
+
+	// Maintenance: destination setup and engine restart, side by side.
+	auto *maintenance_row = new QHBoxLayout();
+	maintenance_row->setSpacing(8);
 
 	setup_destination_button_ =
 		new QPushButton(delaydeck::tr("Button.SetupDestination"), this);
 	setup_destination_button_->setToolTip(
 		delaydeck::tr("Tooltip.SetupDestination"));
-	layout->addWidget(setup_destination_button_);
+	maintenance_row->addWidget(setup_destination_button_);
 
-	advanced_toggle_button_ = new QPushButton(delaydeck::tr("Section.ShowAdvanced"), this);
+	restart_relay_button_ = new QPushButton(delaydeck::tr("Button.RestartRelay"), this);
+	restart_relay_button_->setToolTip(delaydeck::tr("Tooltip.RestartRelay"));
+	maintenance_row->addWidget(restart_relay_button_);
+	layout->addLayout(maintenance_row);
+
+	// Advanced section: collapsible slate scene selection.
+	advanced_toggle_button_ = new QToolButton(this);
+	advanced_toggle_button_->setText(delaydeck::tr("Section.Advanced"));
 	advanced_toggle_button_->setCheckable(true);
+	advanced_toggle_button_->setAutoRaise(true);
+	advanced_toggle_button_->setArrowType(Qt::RightArrow);
+	advanced_toggle_button_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 	layout->addWidget(advanced_toggle_button_);
 
 	advanced_panel_ = new QWidget(this);
 	auto *advanced_layout = new QVBoxLayout(advanced_panel_);
-	advanced_layout->setContentsMargins(0, 0, 0, 0);
-
-	advanced_layout->addWidget(new QLabel(delaydeck::tr("Section.Destination"), this));
+	advanced_layout->setContentsMargins(12, 0, 0, 0);
 
 	auto *scene_grid = new QGridLayout();
 	scene_grid->setColumnStretch(1, 1);
@@ -377,12 +411,6 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 
 	advanced_panel_->setVisible(false);
 	layout->addWidget(advanced_panel_);
-
-	error_label_ = new QLabel(this);
-	error_label_->setWordWrap(true);
-	error_label_->setStyleSheet(QStringLiteral("color: #c0392b;"));
-	error_label_->hide();
-	layout->addWidget(error_label_);
 
 	layout->addStretch();
 
@@ -418,7 +446,7 @@ DelayDeckDock::DelayDeckDock(QWidget *parent) : QWidget(parent)
 		&DelayDeckDock::openSetupDialog);
 	connect(help_button_, &QToolButton::clicked, this,
 		&DelayDeckDock::openAboutDialog);
-	connect(advanced_toggle_button_, &QPushButton::toggled, this,
+	connect(advanced_toggle_button_, &QToolButton::toggled, this,
 		&DelayDeckDock::onAdvancedToggled);
 	connect(target_delay_spin_, qOverload<int>(&QSpinBox::valueChanged), this,
 		[this](int) { scheduleSettingsSave(); });
@@ -780,9 +808,8 @@ void DelayDeckDock::resetSummaryLabel()
 void DelayDeckDock::onAdvancedToggled(bool visible)
 {
 	advanced_panel_->setVisible(visible);
-	advanced_toggle_button_->setText(visible
-						 ? delaydeck::tr("Section.HideAdvanced")
-						 : delaydeck::tr("Section.ShowAdvanced"));
+	advanced_toggle_button_->setArrowType(visible ? Qt::DownArrow
+						      : Qt::RightArrow);
 	if (!loading_settings_) {
 		scheduleSettingsSave();
 	}

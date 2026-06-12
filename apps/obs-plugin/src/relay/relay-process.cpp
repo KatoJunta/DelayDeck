@@ -1,19 +1,13 @@
 #include "relay-process.hpp"
 
 #include "config/relay-settings.hpp"
+#include "obs/obs-install-path.hpp"
 
 #include <QDir>
 #include <QFileInfo>
 #include <QProcessEnvironment>
 #include <QRandomGenerator>
 #include <QUrl>
-
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#endif
 
 namespace {
 
@@ -287,7 +281,7 @@ QString RelayProcess::resolveRelayBinary() const
 		return QFileInfo(fromEnv).absoluteFilePath();
 	}
 
-	const QString pluginDir = pluginModuleDirectory();
+	const QString pluginDir = delaydeck::pluginModuleDirectory();
 	QStringList candidates;
 	if (!pluginDir.isEmpty()) {
 		const QDir dir(pluginDir);
@@ -329,26 +323,3 @@ QString RelayProcess::listenAddressFromRelayUrl(const QString &relayUrl)
 	return QStringLiteral("%1:%2").arg(url.host(), QString::number(port));
 }
 
-QString RelayProcess::pluginModuleDirectory()
-{
-#ifdef _WIN32
-	HMODULE module = nullptr;
-	const auto self = reinterpret_cast<LPCWSTR>(&pluginModuleDirectory);
-	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-					GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-				self, &module)) {
-		return {};
-	}
-
-	wchar_t path[MAX_PATH];
-	const DWORD length = GetModuleFileNameW(module, path, MAX_PATH);
-	if (length == 0 || length >= MAX_PATH) {
-		return {};
-	}
-
-	return QFileInfo(QString::fromWCharArray(path, static_cast<int>(length)))
-		.absolutePath();
-#else
-	return {};
-#endif
-}
